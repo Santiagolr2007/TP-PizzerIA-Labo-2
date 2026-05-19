@@ -1,4 +1,4 @@
-# TP-PizzerIA-Labo-2 prueba1
+# TP-PizzerIA-Labo-2
 
 La idea general del proyecto PizzerIA es desarrollar un sistema en Python para una pizzería que permita gestionar pedidos,   controlar el stock de ingredientes, consultar precios de proveedores y generar reportes de ventas. El sistema simula el
 funcionamiento real de una pizzería: los clientes realizan pedidos, la cocina los procesa, el inventario se actualiza
