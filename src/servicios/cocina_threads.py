@@ -1,11 +1,10 @@
+import time
 import queue
 import threading
-import time
-
-"""from src.utils.decoradores import medir_tiempo, registrar_log"""
+from src.utils.decoradores_v2 import medir_tiempo, registrar_log
 
 
-"""@registrar_log"""
+@registrar_log
 def _cocinero(nombre, cola_pedidos, pizzeria):
     while True:
         pedido = cola_pedidos.get()
@@ -43,7 +42,7 @@ def _cocinero(nombre, cola_pedidos, pizzeria):
             cola_pedidos.task_done()
 
 
-"""@medir_tiempo"""
+@medir_tiempo
 def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2):
     pedidos = pizzeria.obtener_pedidos_pendientes()
 
