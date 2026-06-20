@@ -1,7 +1,7 @@
 from pathlib import Path
 import pandas as pd
 from src.servicios.etl import transformar_stock, transformar_ventas
-from src.utils.decoradores_v2 import medir_tiempo, registrar_log
+from src.utils.decoradores import medir_tiempo, registrar_log
 
 
 def obtener_carpeta_reportes():
