@@ -1,37 +1,70 @@
+import os
 import time
-import logging
-import re
+from pathlib import Path
 from functools import wraps
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-logging.basicConfig(
-    filename='logs/sistema.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+def reintentar(intentos=3, espera=1, excepciones=(Exception,)): #define el decorador con sus parámetros por defecto
+
+    if intentos < 1:
+        raise ValueError("La cantidad de intentos debe ser mayor que cero.")
+
+    def decorador(funcion):
+        @wraps(funcion) #wraps para que la funcion decorada mantenga el nombre y data de la funcion original.
+        def funcion_decorada(*args, **kwargs):
+
+            for numero_intento in range(1, intentos + 1):
+                
+                try:
+                    return funcion(*args, **kwargs)
+                except excepciones as error:
+                    print(f"Intento {numero_intento} de {intentos} fallido: {error}")
+
+                    # Si ya fue el último intento,
+                    # vuelve a lanzar el error.
+                    if numero_intento == intentos:
+                        raise
+
+                    # Espera antes de volver a intentar.
+                    time.sleep(espera)
+        return funcion_decorada
+    return decorador
 
 #Mide cuanto tarde en ejecutarse cualquier funcion clave del sistema
-def medir_tiempo(funcion_original):
-    @wraps(funcion_original)
-    def funcion_envoltura(*args, **kwargs):
-        inicio = time.time()
-        resultado = funcion_original(*args, **kwargs)
-        fin = time.time()
-        tiempo_total = fin - inicio
-        logging.info(f"Funcion [{funcion_original.__name__}] - Tiempo de ejecucion: {tiempo_total:.4f} segundos.")
+def medir_tiempo(funcion):
+    @wraps(funcion) #wraps para que la funcion decorada mantenga el nombre y data de la funcion original.
+    def funcion_decorada(*args, **kwargs):
+
+        tiempo_inicio = time.perf_counter()
+
+        resultado = funcion(*args, **kwargs)
+
+        tiempo_final = time.perf_counter()
+        duracion = tiempo_final - tiempo_inicio #Tiempo total que tardó en ejecutarse la funcion.
+
+        print(f"La función {funcion.__name__} tardó {duracion:.4f} segundos.")
         return resultado
-    return funcion_envoltura
+    return funcion_decorada
 
 #registra en el log cada accion importante, ya sea porque salio bien o el motivo exacto por el cual fallo
-def registrar_auditoria(funcion_original):
-    @wraps(funcion_original)
-    def funcion_envoltura(*args, **kwargs):
-        logging.info(f"AUDITORIA: Ejecutando '{funcion_original.__name__}' con argumentos: {args} {kwargs}")
+def registrar_log(funcion):
+    @wraps(funcion) #wraps para que la funcion decorada mantenga el nombre y data de la funcion original.
+    def envoltura(*args, **kwargs):
+        ruta_proyecto = Path(__file__).resolve().parents[2] #sube desde decoradores_v2.py hasta la raíz del proyecto.
+        carpeta_logs = ruta_proyecto / "logs"
+        carpeta_logs.mkdir(exist_ok=True)
+        
+        zona_argentina = ZoneInfo("America/Argentina/Buenos_Aires")
+        inicio = datetime.now(zona_argentina).strftime("%Y-%m-%d %H:%M:%S") #toma la fecha y hora actual de zona_argentina para incluirla en el mensaje del log
         try:
-            resultado = funcion_original(*args, **kwargs)
-            logging.info(f"AUDITORIA: '{funcion_original.__name__}' finalizo con exito.")
+            resultado = funcion(*args, **kwargs)
+            mensaje = f"[{inicio}] OK - {funcion.__name__}\n"
             return resultado
-        except Exception as e:
-            logging.error(f"AUDITORIA ERROR: Fallo '{funcion_original.__name__}'. Motivo: {type(e).__name__}: {e}")
-            raise e
-    return funcion_envoltura
+        except Exception as error:
+            mensaje = f"[{inicio}] ERROR - {funcion.__name__}: {error}\n"
+            raise # Relanza la excepción para que el programa pueda seguir manejándola fuera del decorador.
+        finally:
+            with open(carpeta_logs / "sistema.log", "a", encoding="utf-8") as archivo:
+                archivo.write(mensaje) # "a" de append, agrega el mensaje sin borrar los registros anteriores.
+    return envoltura
