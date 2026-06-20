@@ -1,6 +1,6 @@
 import requests
 from src.utils.decoradores_v2 import reintentar, registrar_log
-"""from src.utils.excepciones import ProveedorNoDisponibleError"""
+from src.utils.excepciones import ProveedorNoDisponibleError
 
 
 @registrar_log
