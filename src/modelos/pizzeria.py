@@ -1,7 +1,7 @@
 import threading
 from src.modelos.pedido import Pedido
 from src.utils.excepciones import (PedidoInvalidoError,ProductoNoEncontradoError)
-from src.utils.decoradores_v2 import registrar_log
+from src.utils.decoradores import registrar_log
 
 
 class Pizzeria:

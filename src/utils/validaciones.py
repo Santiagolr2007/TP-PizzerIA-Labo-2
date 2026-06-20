@@ -1,10 +1,3 @@
-#Revisa que el correo del cliente tenga un formato real y valido
-"""def validar_email(email: str):
-    patron = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    if not isinstance(email, str) or not re.match(patron, email):
-        return False
-    return True"""
-
 #Revisa que los campos de texto no estén vacíos, se asegura de que el mensaje de error sea claro al incluir el nombre del campo que no cumple con la validación.
 def validar_texto(valor, nombre_campo):
     texto = str(valor).strip()
@@ -33,18 +26,3 @@ def validar_precio(valor):
     if precio <= 0:
         raise ValueError("El precio debe ser mayor que cero.")
     return precio
-
-
-#revisa la estructura completa de un pedido
-"""
-def validar_estructura_pedido(pedido: dict):
-    if not isinstance(pedido, dict):
-        raise ValidacionDatosError("El pedido debe ser estrictamente un diccionario.")
-        
-    claves_obligatorias = ["cliente", "productos", "total"]
-    for clave in claves_obligatorias:
-        if clave not in pedido:
-            raise ValidacionDatosError(f"Estructura de pedido invalida: falta la clave obligatoria '{clave}'.")
-            
-    if not isinstance(pedido["productos"], list) or len(pedido["productos"]) == 0:
-        raise ValidacionDatosError("El campo 'productos' debe ser una lista poblada.")"""

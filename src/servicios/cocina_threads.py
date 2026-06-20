@@ -1,7 +1,7 @@
 import time
 import queue
 import threading
-from src.utils.decoradores_v2 import medir_tiempo, registrar_log
+from src.utils.decoradores import medir_tiempo, registrar_log
 
 
 @registrar_log
