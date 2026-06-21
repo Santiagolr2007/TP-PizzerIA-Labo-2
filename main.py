@@ -181,8 +181,7 @@ def ejecutar_menu():
 7. Generar reportes
 8. Guardar respaldo
 9. Ver reportes
-10. Salir
-\n""")
+10. Salir""")
 
         opcion = input("Elegí una opción: ").strip()
 
