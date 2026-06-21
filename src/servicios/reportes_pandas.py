@@ -1,8 +1,7 @@
-from pathlib import Path
-import pandas as pd
 from src.servicios.etl import transformar_stock, transformar_ventas
 from src.utils.decoradores import medir_tiempo, registrar_log
-
+from pathlib import Path
+import pandas as pd
 
 def obtener_carpeta_reportes():
     # Obtiene la carpeta principal del proyecto.
@@ -28,42 +27,44 @@ def generar_reporte_ventas(ventas,nombre_archivo="reporte_ventas.xlsx"):
     if dataframe.empty:
         reporte_ventas = pd.DataFrame([{"mensaje": "Todavía no existen ventas registradas."}])
     else:
-        dataframe = dataframe.sort_values(
-            by=["fecha", "pedido_id"])
+        dataframe = dataframe.sort_values(by=["fecha", "pedido_id"])
+        pedidos = dataframe[["pedido_id","fecha","cliente"]].drop_duplicates(subset=["pedido_id"])
+        filas_reporte = []
 
-        reporte_ventas = dataframe.groupby(["pedido_id", "fecha", "cliente"],as_index=False).agg(cantidad_total_productos=("cantidad", "sum"),total_vendido_pedido=("subtotal", "sum"))
-        productos_pedido = []
+        for indice, pedido in pedidos.iterrows():
+            pedido_id = pedido["pedido_id"]
+            filas_pedido = dataframe[dataframe["pedido_id"] == pedido_id]
+            productos_agrupados = filas_pedido.groupby("producto",as_index=False).agg(cantidad=("cantidad", "sum"),subtotal=("subtotal", "sum"))
+            textos_productos = []
 
-        # Arma una columna con el detalle de productos de cada pedido.
-        for pedido_id in reporte_ventas["pedido_id"]:
-            filas_pedido = dataframe[
-                dataframe["pedido_id"] == pedido_id]
+            for indice_producto, producto in productos_agrupados.iterrows():
+                texto_producto = (
+                    f"{producto['producto']} x{int(producto['cantidad'])} (${producto['subtotal']:.2f})")
 
-            productos = []
+                textos_productos.append(texto_producto)
 
-            for indice, fila in filas_pedido.iterrows():
-                texto_producto = (f"{fila['producto']} x{int(fila['cantidad'])}")
-                productos.append(texto_producto)
+            total_pedido = productos_agrupados["subtotal"].sum()
+            cantidad_total = productos_agrupados["cantidad"].sum()
 
-            productos_pedido.append(", ".join(productos))
+            fila = {
+                "pedido_id": pedido_id,
+                "fecha": pedido["fecha"],
+                "cliente": pedido["cliente"],
+                "productos": ", ".join(textos_productos),
+                "cantidad_total_productos": cantidad_total,
+                "total_vendido_pedido": total_pedido
+            }
 
-        reporte_ventas["productos"] = productos_pedido
+            filas_reporte.append(fila)
 
-        reporte_ventas["total_vendido_hasta_el_momento"] = (reporte_ventas["total_vendido_pedido"].cumsum()) #calcula la suma acumulativa de una secuencia
-
-        reporte_ventas = reporte_ventas[[
-                "pedido_id",
-                "fecha",
-                "cliente",
-                "productos",
-                "cantidad_total_productos",
-                "total_vendido_pedido",
-                "total_vendido_hasta_el_momento"]]
+        reporte_ventas = pd.DataFrame(filas_reporte)
+        reporte_ventas["total_vendido_hasta_el_momento"] = (reporte_ventas["total_vendido_pedido"].cumsum())
 
     with pd.ExcelWriter(destino,engine="openpyxl") as escritor:
         reporte_ventas.to_excel(escritor,sheet_name="Ventas",index=False)
 
     return str(destino)
+
 
 
 @registrar_log

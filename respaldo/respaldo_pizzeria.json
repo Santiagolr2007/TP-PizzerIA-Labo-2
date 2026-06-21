@@ -1,59 +1,40 @@
 {
     "stock": {
-        "harina": 59,
-        "salsa": 35,
-        "mozzarella": 48,
-        "jamon": 79,
-        "morron": 70,
-        "cebolla": 69,
-        "tomate": 90,
-        "ajo": 61,
-        "roquefort": 38,
-        "aceitunas": 49,
-        "tapas_empanada": 61,
-        "carne": 69,
-        "jamon_queso": 70,
-        "pollo": 83,
-        "verdura": 78,
-        "humita": 80,
-        "gaseosa": 88,
-        "agua": 93
+        "harina": 45,
+        "salsa": 63,
+        "mozzarella": 99,
+        "jamon": 60,
+        "morron": 63,
+        "cebolla": 59,
+        "tomate": 41,
+        "ajo": 90,
+        "roquefort": 92,
+        "aceitunas": 59,
+        "tapas_empanada": 100,
+        "carne": 41,
+        "jamon_queso": 79,
+        "pollo": 80,
+        "verdura": 95,
+        "humita": 58,
+        "gaseosa": 98,
+        "agua": 96
     },
-    "ventas": [
-        {
-            "pedido_id": 1,
-            "fecha": "2026-06-20T23:04:43.794307",
-            "cliente": "natalia",
-            "producto": "Pizza roquefort",
-            "cantidad": 3,
-            "precio_unitario": 14107.8,
-            "subtotal": 42323.399999999994
-        },
-        {
-            "pedido_id": 1,
-            "fecha": "2026-06-20T23:04:43.794307",
-            "cliente": "natalia",
-            "producto": "Gaseosa",
-            "cantidad": 1,
-            "precio_unitario": 2519.0,
-            "subtotal": 2519.0
-        }
-    ],
+    "ventas": [],
     "pedidos": [
         {
             "pedido_id": 1,
-            "cliente": "natalia",
-            "estado": "entregado",
-            "fecha": "2026-06-20T23:04:43.794307",
-            "total": 44842.399999999994,
+            "cliente": "Santiago",
+            "estado": "pendiente",
+            "fecha": "2026-06-21T00:22:01.227016",
+            "total": 24301.0,
             "productos": [
                 {
-                    "nombre": "Pizza roquefort",
-                    "cantidad": 3
+                    "nombre": "Agua",
+                    "cantidad": 1
                 },
                 {
-                    "nombre": "Gaseosa",
-                    "cantidad": 1
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 2
                 }
             ]
         }

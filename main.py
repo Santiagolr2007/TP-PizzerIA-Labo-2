@@ -9,6 +9,7 @@ from src.servicios.inicializacion import crear_sistema
 from src.utils.excepciones import PizzeriaError
 from src.modelos.inventario import Inventario
 from src.modelos.pizzeria import Pizzeria
+from tabulate import tabulate
 import pandas as pd
 
 
@@ -17,42 +18,104 @@ def mostrar_catalogo(pizzeria):
     for numero, producto in enumerate(pizzeria.obtener_catalogo(), start=1):
         print(f"{numero}. {producto.nombre} - ${producto.calcular_precio():.2f}")
 
-
 def cargar_pedido(pizzeria):
-    cliente = validar_texto(input("Nombre del cliente: "), "cliente")
     catalogo = pizzeria.obtener_catalogo()
+
+    if len(catalogo) == 0:
+        print("No hay productos cargados en el catálogo.")
+        return
+
+    cliente = validar_texto(input("Cliente: "),"cliente")
+
+    filas_productos = []
+
+    # Arma un DataFrame con todos los productos disponibles.
+    for numero, producto in enumerate(catalogo, start=1):
+        fila = {
+            "numero": numero,
+            "producto": producto.nombre,
+            "tipo": producto.__class__.__name__,
+            "precio": producto.calcular_precio()
+        }
+        filas_productos.append(fila)
+
+    dataframe_productos = pd.DataFrame(filas_productos)
+    print("\n--- PRODUCTOS DISPONIBLES ---\n")
+    print(tabulate(dataframe_productos,headers="keys",tablefmt="grid",showindex=False))
     items = []
 
     while True:
-        mostrar_catalogo(pizzeria)
-        opcion = validar_entero_positivo(input("Número de producto: "), "producto")
-        if opcion > len(catalogo):
-            print("Producto inexistente.")
-            continue
+        numero_producto = validar_entero_positivo(input("\nNúmero de producto: "),"número de producto")
 
-        cantidad = validar_entero_positivo(input("Cantidad: "), "cantidad")
-        items.append((catalogo[opcion - 1].nombre, cantidad))
+        if numero_producto < 1 or numero_producto > len(catalogo):
+            raise ValueError("El número de producto no existe.")
 
-        continuar = input("¿Agregar otro producto? (s/n): ").strip().lower()
-        if continuar != "s":
-            break
+        cantidad = validar_entero_positivo(input("Cantidad: "),"cantidad")
 
-    pedido = pizzeria.crear_pedido(cliente, items)
-    print(f"Pedido #{pedido.pedido_id} cargado. Total: ${pedido.calcular_total():.2f}")
+        producto_elegido = catalogo[numero_producto - 1]
+        nombre_producto = producto_elegido.nombre
+        producto_ya_cargado = False
+
+        # Agrupa productos iguales dentro del pedido.
+        for item in items:
+            if item[0] == nombre_producto:
+                item[1] += cantidad
+                producto_ya_cargado = True
+
+        if producto_ya_cargado == False:
+            items.append([nombre_producto,cantidad])
+
+        respuesta = input("¿Agregar otro producto? (s/n): ").lower()
+        if respuesta == "n":
+                    break
+        elif respuesta == "s":
+                    continue
+        else:
+                    print("Opción no válida. Se finalizará el pedido.")
+                    break
+
+    pedido = pizzeria.crear_pedido(cliente,items)
+    print(f"Pedido #{pedido.pedido_id} creado correctamente.")
+
+
+def obtener_productos_agrupados_pedido(pedido):
+    # Agrupa productos iguales dentro de un mismo pedido.
+    productos_agrupados = {}
+
+    for producto, cantidad in pedido.productos:
+        if producto.nombre not in productos_agrupados:
+            productos_agrupados[producto.nombre] = {"cantidad": 0,"subtotal": 0}
+
+        productos_agrupados[producto.nombre]["cantidad"] += cantidad
+        productos_agrupados[producto.nombre]["subtotal"] += producto.calcular_precio() * cantidad
+    textos_productos = []
+
+    for nombre_producto, datos in productos_agrupados.items():
+        texto = (
+            f"{nombre_producto} x{datos['cantidad']} (${datos['subtotal']:.2f})")
+
+        textos_productos.append(texto)
+
+    return ", ".join(textos_productos)
 
 
 def mostrar_pedidos(pizzeria):
     pedidos = pizzeria.obtener_pedidos()
-    if not pedidos:
+
+    if len(pedidos) == 0:
         print("No hay pedidos cargados.")
         return
 
-    print("\n--- PEDIDOS ---")
+    filas = []
+
     for pedido in pedidos:
-        print(
-            f"Pedido #{pedido.pedido_id} | Cliente: {pedido.cliente} | "
-            f"Estado: {pedido.estado} | Total: ${pedido.calcular_total():.2f}"
-        )
+        productos = obtener_productos_agrupados_pedido(pedido)
+        fila = {"pedido_id": pedido.pedido_id,"cliente": pedido.cliente,"estado": pedido.estado,"productos": productos,"total": pedido.calcular_total()}
+        filas.append(fila)
+
+    dataframe_pedidos = pd.DataFrame(filas)
+    print("\n--- PEDIDOS ---\n")
+    print(tabulate(dataframe_pedidos,headers="keys",tablefmt="grid",showindex=False))
 
 
 def mostrar_stock(pizzeria):
@@ -69,9 +132,8 @@ def mostrar_stock(pizzeria):
     # Crea el DataFrame.
     dataframe_stock = pd.DataFrame(filas)
     print("\n--- STOCK ---\n")
-
     # Muestra el DataFrame completo en consola.
-    print(dataframe_stock.to_string(index=False))
+    print(tabulate(dataframe_stock,headers="keys",tablefmt="grid",showindex=False))
 
 
 def reponer_stock(pizzeria):
@@ -84,7 +146,7 @@ def reponer_stock(pizzeria):
 
     dataframe_stock = pd.DataFrame(filas)
     print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---\n")
-    print(dataframe_stock.to_string(index=False))
+    print(tabulate(dataframe_stock,headers="keys",tablefmt="grid",showindex=False))
     ingrediente = validar_texto(input("\nIngrediente a reponer: "),"ingrediente").lower()
 
     if ingrediente not in stock:
@@ -132,7 +194,7 @@ def ver_reportes_consola():
     if dataframe.empty:
         print("El reporte está vacío.")
     else:
-        print(dataframe.to_string(index=False))
+        print(tabulate(dataframe,headers="keys",tablefmt="grid",showindex=False))
 
 def guardar_respaldo(pizzeria):
     datos = {
@@ -183,7 +245,8 @@ def ejecutar_menu():
 9. Ver reportes
 10. Salir""")
 
-        opcion = input("Elegí una opción: ").strip()
+        opcion = input("\nElegí una opción: ").strip()
+        print()  # Salto de línea para mejorar legibilidad.
 
         try:
             if opcion == "0":
