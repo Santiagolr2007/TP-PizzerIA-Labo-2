@@ -9,6 +9,7 @@ from src.servicios.inicializacion import crear_sistema
 from src.utils.excepciones import PizzeriaError
 from src.modelos.inventario import Inventario
 from src.modelos.pizzeria import Pizzeria
+import pandas as pd
 
 
 def mostrar_catalogo(pizzeria):
@@ -55,19 +56,37 @@ def mostrar_pedidos(pizzeria):
 
 
 def mostrar_stock(pizzeria):
-    print("\n--- STOCK ---")
-    for producto, cantidad in pizzeria.inventario.obtener_stock().items():
-        print(f"{producto}: {cantidad}")
+    # Obtiene el stock actual.
+    stock = pizzeria.inventario.obtener_stock()
+    # Convierte el diccionario de stock en una lista de filas.
+    filas = []
+
+    for ingrediente, cantidad in stock.items():
+
+        fila = {"ingrediente": ingrediente,"cantidad": cantidad}
+        filas.append(fila)
+
+    # Crea el DataFrame.
+    dataframe_stock = pd.DataFrame(filas)
+    print("\n--- STOCK ---\n")
+
+    # Muestra el DataFrame completo en consola.
+    print(dataframe_stock.to_string(index=False))
 
 
 def reponer_stock(pizzeria):
     stock = pizzeria.inventario.obtener_stock()
-    print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---")
+    filas = []
 
     for ingrediente, cantidad in stock.items():
-        print(f"- {ingrediente} | Stock actual: {cantidad}")
+        fila = {"ingrediente": ingrediente,"stock_actual": cantidad}
+        filas.append(fila)
 
-    ingrediente = validar_texto(input("Ingrediente a reponer: "),"ingrediente").lower()
+    dataframe_stock = pd.DataFrame(filas)
+    print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---\n")
+    print(dataframe_stock.to_string(index=False))
+    ingrediente = validar_texto(input("\nIngrediente a reponer: "),"ingrediente").lower()
+
     if ingrediente not in stock:
         raise ValueError(f"El ingrediente '{ingrediente}' no existe. Debe elegir uno de la lista.")
 
