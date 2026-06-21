@@ -1,18 +1,19 @@
 #Podemos buscar cualquier tipo de error buscando solo esta clase
-class PizzerIAError(Exception): #Excepción base del proyecto.
+class PizzeriaError(Exception):
+    #Excepción base del proyecto.
     pass
 
-class StockInsuficienteError(PizzerIAError):
+class StockInsuficienteError(PizzeriaError):
     pass
 
-class PedidoInvalidoError(PizzerIAError):
+class PedidoInvalidoError(PizzeriaError):
     pass
 
-class ProductoNoEncontradoError(PizzerIAError):
+class ProductoNoEncontradoError(PizzeriaError):
     pass
 
-class EstadoPedidoError(PizzerIAError):
+class EstadoPedidoError(PizzeriaError):
     pass
 
-class ProveedorNoDisponibleError(PizzerIAError):
+class ProveedorNoDisponibleError(PizzeriaError):
     pass

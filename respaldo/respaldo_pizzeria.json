@@ -1,0 +1,49 @@
+{
+    "stock": {
+        "harina": 96,
+        "salsa": 93,
+        "mozzarella": 69,
+        "tapas_empanada": 99,
+        "relleno_empanada": 75,
+        "gaseosa": 97
+    },
+    "ventas": [
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-20T21:16:31.276950",
+            "cliente": "Natalia",
+            "producto": "Pizza muzzarella",
+            "cantidad": 2,
+            "precio_unitario": 11200.0,
+            "subtotal": 22400.0
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-20T21:16:31.276950",
+            "cliente": "Natalia",
+            "producto": "Gaseosa",
+            "cantidad": 1,
+            "precio_unitario": 2500.0,
+            "subtotal": 2500.0
+        }
+    ],
+    "pedidos": [
+        {
+            "pedido_id": 1,
+            "cliente": "Natalia",
+            "estado": "entregado",
+            "fecha": "2026-06-20T21:16:31.276950",
+            "total": 24900.0,
+            "productos": [
+                {
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 2
+                },
+                {
+                    "nombre": "Gaseosa",
+                    "cantidad": 1
+                }
+            ]
+        }
+    ]
+}
