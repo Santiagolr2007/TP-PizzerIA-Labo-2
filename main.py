@@ -1,29 +1,14 @@
-from src.modelos.inventario import Inventario
-from src.modelos.pizzeria import Pizzeria
-from src.modelos.producto import (Pizza, Empanada, Bebida)
-from src.servicios.cocina_threads import procesar_pedidos_con_hilos
-from src.servicios.proveedores import consultar_dolar_oficial
 from src.servicios.reportes_pandas import (generar_reporte_stock, generar_reporte_ventas,leer_reporte_excel)
 from src.servicios.persistencia import (guardar_json,cargar_respaldo_pizzeria)
-from src.utils.excepciones import PizzeriaError
 from src.utils.validaciones import (validar_entero_positivo, validar_texto)
-import random
-
-def crear_sistema():
-    stock_inicial = {
-        "harina": random.randint(10, 30),
-        "salsa": random.randint(10, 30),
-        "mozzarella": random.randint(10, 30),
-        "tapas_empanada": random.randint(10, 30),
-        "relleno_empanada": random.randint(10, 30),
-        "gaseosa": random.randint(10, 30),}
-
-    inventario = Inventario(stock_inicial)
-    pizzeria = Pizzeria(inventario)
-    pizzeria.registrar_producto(Pizza("Pizza muzzarella", 8000, "grande"))
-    pizzeria.registrar_producto(Empanada("Empanada de carne", 1200))
-    pizzeria.registrar_producto(Bebida("Gaseosa", 2500))
-    return pizzeria
+from src.servicios.cocina_threads import procesar_pedidos_con_hilos
+from src.servicios.proveedores import consultar_dolar_oficial
+from src.utils.excepciones import ProveedorNoDisponibleError
+from src.modelos.producto import (Pizza, Empanada, Bebida)
+from src.servicios.inicializacion import crear_sistema
+from src.utils.excepciones import PizzeriaError
+from src.modelos.inventario import Inventario
+from src.modelos.pizzeria import Pizzeria
 
 
 def mostrar_catalogo(pizzeria):
@@ -106,6 +91,29 @@ def generar_reportes(pizzeria):
     print(f"Reporte de ventas: {ruta_ventas}")
     print(f"Reporte de stock: {ruta_stock}")
 
+def ver_reportes_consola():
+
+    print("\n========== VER REPORTES ==========")
+    print("1. Reporte de ventas")
+    print("2. Reporte de stock")
+    opcion = input("Elegí un reporte: ")
+
+    if opcion == "1":
+        nombre_archivo = "reporte_ventas.xlsx"
+
+    elif opcion == "2":
+        nombre_archivo = "reporte_stock.xlsx"
+
+    else:
+        raise ValueError("La opción de reporte no existe.")
+    
+    dataframe = leer_reporte_excel(nombre_archivo)
+    print(f"\n========== {nombre_archivo} ==========\n")
+
+    if dataframe.empty:
+        print("El reporte está vacío.")
+    else:
+        print(dataframe.to_string(index=False))
 
 def guardar_respaldo(pizzeria):
     datos = {
@@ -137,6 +145,7 @@ def cargar_guardado(pizzeria):
 
 
 def ejecutar_menu():
+    # Crea la pizzería, el inventario, el stock y los productos iniciales.
     pizzeria = crear_sistema()
 
     while True:
@@ -152,7 +161,9 @@ def ejecutar_menu():
 6. Consultar recurso externo
 7. Generar reportes
 8. Guardar respaldo
-9. Salir\n""")
+9. Ver reportes
+10. Salir
+\n""")
 
         opcion = input("Elegí una opción: ").strip()
 
@@ -176,6 +187,8 @@ def ejecutar_menu():
             elif opcion == "8":
                 guardar_respaldo(pizzeria)
             elif opcion == "9":
+                ver_reportes_consola()
+            elif opcion == "10":
                 guardar_respaldo(pizzeria)
                 print("Programa finalizado.")
                 break

@@ -1,0 +1,202 @@
+import random
+from src.modelos.inventario import Inventario
+from src.modelos.pizzeria import Pizzeria
+from src.modelos.producto import Bebida, Empanada, Pizza
+from src.servicios.proveedores import consultar_dolar_oficial
+
+def convertir_dolares_a_pesos(precio_dolares):
+    # Convierte un precio estimado en dólares a pesos argentinos.
+    constante_dolar = consultar_dolar_oficial()
+    precio_pesos = precio_dolares * constante_dolar
+    return int(precio_pesos)
+
+
+def crear_stock_aleatorio(ingredientes):
+
+    # Crea un stock aleatorio entre 40 y 100 para cada ingrediente.
+    stock = {}
+    for ingrediente in ingredientes:
+        stock[ingrediente] = random.randint(40, 100)
+
+    return stock
+
+
+def crear_sistema():
+    # Lista de ingredientes que maneja el inventario.
+    ingredientes = [
+        "harina",
+        "salsa",
+        "mozzarella",
+        "jamon",
+        "morron",
+        "cebolla",
+        "tomate",
+        "ajo",
+        "roquefort",
+        "aceitunas",
+        "tapas_empanada",
+        "carne",
+        "jamon_queso",
+        "pollo",
+        "verdura",
+        "humita",
+        "gaseosa",
+        "agua"
+    ]
+
+    # Crea cantidades aleatorias entre 15 y 40 para todos los ingredientes.
+    stock_inicial = crear_stock_aleatorio(ingredientes)
+
+    # Precio unitario estimado de cada ingrediente convertido desde dólares.
+    precios_stock = {
+        "harina": convertir_dolares_a_pesos(0.60),
+        "salsa": convertir_dolares_a_pesos(0.45),
+        "mozzarella": convertir_dolares_a_pesos(1.20),
+        "jamon": convertir_dolares_a_pesos(1.10),
+        "morron": convertir_dolares_a_pesos(0.50),
+        "cebolla": convertir_dolares_a_pesos(0.35),
+        "tomate": convertir_dolares_a_pesos(0.45),
+        "ajo": convertir_dolares_a_pesos(0.25),
+        "roquefort": convertir_dolares_a_pesos(1.50),
+        "aceitunas": convertir_dolares_a_pesos(0.70),
+        "tapas_empanada": convertir_dolares_a_pesos(0.20),
+        "carne": convertir_dolares_a_pesos(1.00),
+        "jamon_queso": convertir_dolares_a_pesos(0.95),
+        "pollo": convertir_dolares_a_pesos(0.90),
+        "verdura": convertir_dolares_a_pesos(0.60),
+        "humita": convertir_dolares_a_pesos(0.55),
+        "gaseosa": convertir_dolares_a_pesos(0.80),
+        "agua": convertir_dolares_a_pesos(0.45)
+    }
+
+    # Crea el inventario con cantidades y precios.
+    inventario = Inventario(stock_inicial,precios_stock)
+
+    # Crea la pizzería.
+    pizzeria = Pizzeria(inventario)
+
+    # Registra pizzas.
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza muzzarella",
+            convertir_dolares_a_pesos(5.50), #Todas las pizzas ya llevan harina salsa y mozzarella.
+            "grande"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza jamon y morron",
+            convertir_dolares_a_pesos(6.50),
+            "grande",
+            {
+                "jamon": 2,
+                "morron": 1
+            }
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza fugazzeta",
+            convertir_dolares_a_pesos(6.00),
+            "grande",
+            {
+                "cebolla": 2
+            }
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza napolitana",
+            convertir_dolares_a_pesos(6.20),
+            "grande",
+            {
+                "tomate": 2,
+                "ajo": 1
+            }
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza roquefort",
+            convertir_dolares_a_pesos(6.80),
+            "grande",
+            {
+                "roquefort": 2
+            }
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Pizza(
+            "Pizza con aceitunas",
+            convertir_dolares_a_pesos(5.80),
+            "grande",
+            {
+                "aceitunas": 1
+            }
+        )
+    )
+
+    # Registra empanadas.
+    pizzeria.registrar_producto(
+        Empanada(
+            "Empanada de carne",
+            convertir_dolares_a_pesos(0.80),
+            "carne"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Empanada(
+            "Empanada de jamon y queso",
+            convertir_dolares_a_pesos(0.80),
+            "jamon_queso"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Empanada(
+            "Empanada de pollo",
+            convertir_dolares_a_pesos(0.80),
+            "pollo"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Empanada(
+            "Empanada de verdura",
+            convertir_dolares_a_pesos(0.75),
+            "verdura"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Empanada(
+            "Empanada de humita",
+            convertir_dolares_a_pesos(0.75),
+            "humita"
+        )
+    )
+
+    # Registra bebidas.
+    pizzeria.registrar_producto(
+        Bebida(
+            "Gaseosa",
+            convertir_dolares_a_pesos(1.70),
+            "gaseosa"
+        )
+    )
+
+    pizzeria.registrar_producto(
+        Bebida(
+            "Agua",
+            convertir_dolares_a_pesos(1.00),
+            "agua"
+        )
+    )
+
+    return pizzeria
