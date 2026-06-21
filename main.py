@@ -79,9 +79,18 @@ def mostrar_stock(pizzeria):
 
 
 def reponer_stock(pizzeria):
-    ingrediente = validar_texto(input("Ingrediente a reponer: "), "ingrediente").lower()
-    cantidad = validar_entero_positivo(input("Cantidad: "), "cantidad")
-    pizzeria.inventario.reponer(ingrediente, cantidad)
+    stock = pizzeria.inventario.obtener_stock()
+    print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---")
+
+    for ingrediente, cantidad in stock.items():
+        print(f"- {ingrediente} | Stock actual: {cantidad}")
+
+    ingrediente = validar_texto(input("Ingrediente a reponer: "),"ingrediente").lower()
+    if ingrediente not in stock:
+        raise ValueError(f"El ingrediente '{ingrediente}' no existe. Debe elegir uno de la lista.")
+
+    cantidad = validar_entero_positivo(input("Cantidad: "),"cantidad")
+    pizzeria.inventario.reponer(ingrediente,cantidad)
     print("Stock actualizado.")
 
 

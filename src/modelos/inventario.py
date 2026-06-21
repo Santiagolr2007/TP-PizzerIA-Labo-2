@@ -40,12 +40,15 @@ class Inventario:
     def reponer(self, ingrediente, cantidad):
 
         # Valida que la cantidad sea un número entero mayor que cero.
-        cantidad_validada = validar_entero_positivo(cantidad,"cantidad")
+        cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
 
         with self.__candado:
 
-            # Si el ingrediente ya existe, obtiene su cantidad. Si no existe, comienza desde cero.
-            cantidad_actual = self.__stock.get(ingrediente, 0)
+            # Verifica que el ingrediente exista en el inventario.
+            if ingrediente not in self.__stock:
+                raise ValueError(f"El ingrediente '{ingrediente}' no existe en el stock.")
+
+            cantidad_actual = self.__stock[ingrediente]
             nueva_cantidad = cantidad_actual + cantidad_validada
             self.__stock[ingrediente] = nueva_cantidad
 
