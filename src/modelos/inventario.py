@@ -5,17 +5,73 @@ from src.utils.validaciones import validar_entero_positivo
 
 class Inventario:
 
-    def __init__(self, stock_inicial=None):
+    def __init__(self, stock_inicial=None, precios_stock=None):
 
-        # Si no se recibe un stock inicial, crea un diccionario vacío.
+        # Crea el stock inicial.
         if stock_inicial is None:
             self.__stock = {}
         else:
             self.__stock = dict(stock_inicial)
 
-        # El candado evita que dos hilos modifiquen el stock exactamente al mismo tiempo.
+        # Crea la lista de precios del stock.
+        if precios_stock is None:
+            self.__precios_stock = {}
+        else:
+            self.__precios_stock = dict(precios_stock)
+
+        # Si algún ingrediente no tiene precio, se guarda con precio cero.
+        for ingrediente in self.__stock:
+            if ingrediente not in self.__precios_stock:
+                self.__precios_stock[ingrediente] = 0
+
+        # Protege el stock cuando trabajan varios hilos.
         self.__candado = threading.Lock()
 
+#########
+
+    def reemplazar_stock(self, nuevo_stock):
+        # Reemplaza todo el inventario de forma segura.
+        with self.__candado:
+            self.__stock = dict(nuevo_stock)
+
+            # Mantiene los precios existentes y agrega precio cero si falta alguno.
+            for ingrediente in self.__stock:
+                if ingrediente not in self.__precios_stock:
+                    self.__precios_stock[ingrediente] = 0
+
+#########
+
+    def reponer(self, ingrediente, cantidad):
+        # Valida que la cantidad sea un número entero mayor que cero.
+        cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
+
+        with self.__candado:
+            # Verifica que el ingrediente exista en el inventario.
+            if ingrediente not in self.__stock:
+                raise ValueError(f"El ingrediente '{ingrediente}' no existe en el stock.")
+
+            cantidad_actual = self.__stock[ingrediente]
+            nueva_cantidad = cantidad_actual + cantidad_validada
+            self.__stock[ingrediente] = nueva_cantidad
+
+##########
+
+    def obtener_stock_detallado(self):
+
+        # Devuelve el stock con cantidad, precio unitario y valor total.
+        with self.__candado:
+            stock_detallado = []
+
+            for ingrediente, cantidad in self.__stock.items():
+                precio_unitario = self.__precios_stock.get(ingrediente, 0)
+                valor_total = cantidad * precio_unitario
+
+                fila = {"ingrediente": ingrediente,"cantidad": cantidad,"precio_unitario": precio_unitario,"valor_total_stock": valor_total}
+
+                stock_detallado.append(fila)
+
+        return stock_detallado
+    
 #########
 
     def obtener_stock(self):
@@ -25,32 +81,6 @@ class Inventario:
             # Devuelve una copia para evitar que se modifique el diccionario original desde afuera de la clase.
             copia_stock = self.__stock.copy()
         return copia_stock
-    
-#########
-
-    def reemplazar_stock(self, nuevo_stock):
-
-        # Bloquea el inventario mientras reemplaza todos sus datos.
-        with self.__candado:
-            self.__stock = dict(nuevo_stock)
-
-
-########
-
-    def reponer(self, ingrediente, cantidad):
-
-        # Valida que la cantidad sea un número entero mayor que cero.
-        cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
-
-        with self.__candado:
-
-            # Verifica que el ingrediente exista en el inventario.
-            if ingrediente not in self.__stock:
-                raise ValueError(f"El ingrediente '{ingrediente}' no existe en el stock.")
-
-            cantidad_actual = self.__stock[ingrediente]
-            nueva_cantidad = cantidad_actual + cantidad_validada
-            self.__stock[ingrediente] = nueva_cantidad
 
 ########
 

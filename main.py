@@ -1,31 +1,28 @@
 from src.modelos.inventario import Inventario
 from src.modelos.pizzeria import Pizzeria
-from src.modelos.producto import Pizza, Empanada, Bebida
+from src.modelos.producto import (Pizza, Empanada, Bebida)
 from src.servicios.cocina_threads import procesar_pedidos_con_hilos
 from src.servicios.proveedores import consultar_dolar_oficial
-from src.servicios.reportes_pandas import generar_reporte_stock, generar_reporte_ventas
+from src.servicios.reportes_pandas import (generar_reporte_stock, generar_reporte_ventas,leer_reporte_excel)
 from src.servicios.persistencia import (guardar_json,cargar_respaldo_pizzeria)
 from src.utils.excepciones import PizzeriaError
-from src.utils.validaciones import validar_entero_positivo, validar_texto
+from src.utils.validaciones import (validar_entero_positivo, validar_texto)
 import random
 
 def crear_sistema():
     stock_inicial = {
-        "harina": random.randint(10, 100),
-        "salsa": random.randint(10, 100),
-        "mozzarella": random.randint(10, 100),
-        "tapas_empanada": random.randint(10, 100),
-        "relleno_empanada": random.randint(10, 100),
-        "gaseosa": random.randint(10, 100),
-    }
+        "harina": random.randint(10, 30),
+        "salsa": random.randint(10, 30),
+        "mozzarella": random.randint(10, 30),
+        "tapas_empanada": random.randint(10, 30),
+        "relleno_empanada": random.randint(10, 30),
+        "gaseosa": random.randint(10, 30),}
 
     inventario = Inventario(stock_inicial)
     pizzeria = Pizzeria(inventario)
-
     pizzeria.registrar_producto(Pizza("Pizza muzzarella", 8000, "grande"))
     pizzeria.registrar_producto(Empanada("Empanada de carne", 1200))
     pizzeria.registrar_producto(Bebida("Gaseosa", 2500))
-
     return pizzeria
 
 
@@ -104,9 +101,10 @@ def consultar_proveedor():
 
 def generar_reportes(pizzeria):
     ruta_ventas = generar_reporte_ventas(pizzeria.obtener_ventas())
-    ruta_stock = generar_reporte_stock(pizzeria.inventario.obtener_stock())
-    print(f"Reporte de ventas generado: {ruta_ventas}")
-    print(f"Reporte de stock generado: {ruta_stock}")
+    ruta_stock = generar_reporte_stock(pizzeria.inventario.obtener_stock_detallado())
+    print("Reportes generados correctamente.")
+    print(f"Reporte de ventas: {ruta_ventas}")
+    print(f"Reporte de stock: {ruta_stock}")
 
 
 def guardar_respaldo(pizzeria):

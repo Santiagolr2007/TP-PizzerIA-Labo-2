@@ -41,16 +41,39 @@ def transformar_ventas(ventas): #ventas=lista de diccionarios
     return dataframe
 
 
-def transformar_stock(stock): #stock=diccionario de ingredientes y cantidades
-    dataframe = pd.DataFrame(
-        list(stock.items()),
-        columns=["ingrediente", "cantidad"],) # lo tranformo en un dataframe con las columnas ingrediente y cantidad
+def transformar_stock(stock):
+    # Si el stock ya viene detallado, lo convierte directo en DataFrame.
+    if isinstance(stock, list):
+        dataframe = pd.DataFrame(stock)
 
-    dataframe["cantidad"] = pd.to_numeric(
-        dataframe["cantidad"],
-        errors="coerce",).fillna(0) #pasa a tipo numerico y si hay error lo reemplaza por 0
+    # Si el stock viene como diccionario simple, lo arma sin precios.
+    else:
+        filas = []
 
-    dataframe = dataframe.drop_duplicates(subset=["ingrediente"])
-    dataframe["alerta_reposicion"] = dataframe["cantidad"] <= 5 #crea la columna alerta_reposicion booleana que depende de si es menor o igual a 5
+        for ingrediente, cantidad in stock.items():
+            fila = {"ingrediente": ingrediente,"cantidad": cantidad,"precio_unitario": 0,"valor_total_stock": 0}
+            filas.append(fila)
+
+        dataframe = pd.DataFrame(filas)
+
+    columnas = ["ingrediente","cantidad","precio_unitario","valor_total_stock"]
+
+    # Asegura que existan todas las columnas.
+    for columna in columnas:
+        if columna not in dataframe.columns:
+            dataframe[columna] = 0
+
+    dataframe["cantidad"] = pd.to_numeric(dataframe["cantidad"],errors="coerce").fillna(0)
+
+    dataframe["precio_unitario"] = pd.to_numeric(dataframe["precio_unitario"],errors="coerce").fillna(0)
+
+    dataframe["valor_total_stock"] = (dataframe["cantidad"] * dataframe["precio_unitario"])
+
+    dataframe["estado"] = "Disponible"
+
+    dataframe.loc[
+        dataframe["cantidad"] <= 5,
+        "estado"
+    ] = "Reponer"
 
     return dataframe
