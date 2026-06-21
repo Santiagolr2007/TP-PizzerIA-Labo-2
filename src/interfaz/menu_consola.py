@@ -269,19 +269,21 @@ def mostrar_pedidos(pizzeria):
 
 
 def reponer_stock(pizzeria):
-    stock = pizzeria.inventario.obtener_stock()
-    filas = []
-
-    for ingrediente, cantidad in stock.items():
-        fila = {"ingrediente": ingrediente,"stock_actual": cantidad}
-        filas.append(fila)
-
-    dataframe_stock = pd.DataFrame(filas)
+    stock_detallado = pizzeria.inventario.obtener_stock_detallado()
+    dataframe_stock = pd.DataFrame(stock_detallado)
+    # Renombra la columna cantidad para que sea más clara en la reposición.
+    dataframe_stock = dataframe_stock.rename(columns={"cantidad": "stock_actual"})
     print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---\n")
     print(tabulate(dataframe_stock,headers="keys",tablefmt="grid",showindex=False))
+    ingredientes_validos = []
+
+    # Guarda los nombres de ingredientes válidos para poder validar la elección.
+    for fila in stock_detallado:
+        ingredientes_validos.append(fila["ingrediente"])
+
     ingrediente = validar_texto(input("\nIngrediente a reponer: "),"ingrediente").lower()
 
-    if ingrediente not in stock:
+    if ingrediente not in ingredientes_validos:
         raise ValueError(f"El ingrediente '{ingrediente}' no existe. Debe elegir uno de la lista.")
 
     cantidad = validar_entero_positivo(input("Cantidad: "),"cantidad")

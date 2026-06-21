@@ -1,40 +1,60 @@
 {
+    "dinero": 55082.399999999994,
     "stock": {
-        "harina": 45,
-        "salsa": 63,
-        "mozzarella": 99,
-        "jamon": 60,
-        "morron": 63,
-        "cebolla": 59,
-        "tomate": 41,
-        "ajo": 90,
-        "roquefort": 92,
-        "aceitunas": 59,
-        "tapas_empanada": 100,
-        "carne": 41,
-        "jamon_queso": 79,
-        "pollo": 80,
-        "verdura": 95,
-        "humita": 58,
-        "gaseosa": 98,
-        "agua": 96
+        "harina": 53,
+        "salsa": 61,
+        "mozzarella": 26,
+        "jamon": 64,
+        "morron": 66,
+        "cebolla": 30,
+        "tomate": 37,
+        "ajo": 67,
+        "roquefort": 45,
+        "aceitunas": 63,
+        "tapas_empanada": 48,
+        "carne": 50,
+        "jamon_queso": 38,
+        "pollo": 31,
+        "verdura": 49,
+        "humita": 55,
+        "gaseosa": 52,
+        "agua": 59
     },
-    "ventas": [],
+    "ventas": [
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-21T01:25:17.784327",
+            "cliente": "yo",
+            "producto": "Pizza roquefort",
+            "cantidad": 3,
+            "precio_unitario": 14107.8,
+            "subtotal": 42323.399999999994
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-21T01:25:17.784327",
+            "cliente": "yo",
+            "producto": "Empanada de humita",
+            "cantidad": 1,
+            "precio_unitario": 1111.0,
+            "subtotal": 1111.0
+        }
+    ],
     "pedidos": [
         {
             "pedido_id": 1,
-            "cliente": "Santiago",
-            "estado": "pendiente",
-            "fecha": "2026-06-21T00:22:01.227016",
-            "total": 24301.0,
+            "cliente": "yo",
+            "estado": "entregado",
+            "fecha": "2026-06-21T01:25:17.784327",
+            "total": 43434.399999999994,
             "productos": [
                 {
-                    "nombre": "Agua",
-                    "cantidad": 1
+                    "nombre": "Pizza roquefort",
+                    "cantidad": 3
                 },
                 {
-                    "nombre": "Pizza muzzarella",
-                    "cantidad": 2
+                    "nombre": "Empanada de humita",
+                    "cantidad": 1
                 }
             ]
         }
