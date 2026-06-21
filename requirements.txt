@@ -1,1 +1,3 @@
-"Librerias requeridas para ejecutar el proyecto."
+pandas
+openpyxl
+requests
