@@ -84,6 +84,29 @@ class Inventario:
 
 ########
 
+    def obtener_precio_unitario(self, ingrediente):
+        # Devuelve el precio unitario de compra de un ingrediente.
+        with self.__candado:
+            if ingrediente not in self.__stock:
+                raise ValueError(f"El ingrediente '{ingrediente}' no existe en el stock.")
+
+            precio_unitario = self.__precios_stock.get(ingrediente, 0)
+
+            if precio_unitario <= 0:
+                raise ValueError(f"El ingrediente '{ingrediente}' no tiene precio unitario cargado.")
+        return precio_unitario
+
+########
+
+    def calcular_costo_reposicion(self, ingrediente, cantidad):
+        # Calcula cuánto cuesta comprar cierta cantidad de un ingrediente.
+        cantidad_validada = validar_entero_positivo(cantidad,"cantidad")
+        precio_unitario = self.obtener_precio_unitario(ingrediente)
+        costo_total = precio_unitario * cantidad_validada
+        return costo_total
+
+########
+
     def descontar(self, ingredientes_necesarios):
 
         with self.__candado:

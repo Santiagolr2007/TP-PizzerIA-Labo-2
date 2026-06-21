@@ -163,10 +163,12 @@ def cargar_guardado(pizzeria):
         cantidad_pedidos = len(pizzeria.obtener_pedidos())
         cantidad_ventas = len(pizzeria.obtener_ventas())
         cantidad_ingredientes = len(pizzeria.inventario.obtener_stock())
+        dinero_disponible = pizzeria.obtener_dinero()
         print("Guardado cargado correctamente.")
         print(f"Pedidos cargados: {cantidad_pedidos}")
         print(f"Ventas cargadas: {cantidad_ventas}")
         print(f"Ingredientes cargados: {cantidad_ingredientes}")
+        print(f"Dinero disponible: ${dinero_disponible:.2f}")
 
     except FileNotFoundError as error:
         print(f"Error: {error}")
@@ -283,8 +285,10 @@ def reponer_stock(pizzeria):
         raise ValueError(f"El ingrediente '{ingrediente}' no existe. Debe elegir uno de la lista.")
 
     cantidad = validar_entero_positivo(input("Cantidad: "),"cantidad")
-    pizzeria.inventario.reponer(ingrediente,cantidad)
+    costo_total = pizzeria.reponer_stock(ingrediente,cantidad)
     print("Stock actualizado.")
+    print(f"Costo de reposición: ${costo_total:.2f}")
+    print(f"Dinero disponible: ${pizzeria.obtener_dinero():.2f}")
 
 
 def consultar_proveedor():
@@ -305,10 +309,12 @@ def generar_reportes(pizzeria):
 
 def guardar_respaldo(pizzeria):
     datos = {
+        "dinero": pizzeria.obtener_dinero(),
         "stock": pizzeria.inventario.obtener_stock(),
         "ventas": pizzeria.obtener_ventas(),
         "pedidos": [pedido.to_dict() for pedido in pizzeria.obtener_pedidos()],
     }
+
     ruta = guardar_json(datos, "respaldo_pizzeria.json")
     print(f"Respaldo guardado en: {ruta}")
 
@@ -335,6 +341,7 @@ def ejecutar_menu():
 
     while True:
         print("\n========== PizzerIA ==========\n")
+        print(f"Dinero disponible: ${pizzeria.obtener_dinero():.2f}\n")
         print(tabulate(dataframe_menu,headers="keys",tablefmt="grid",showindex=False))
         opcion = input("\nElegí una opción: ").strip()
         print()

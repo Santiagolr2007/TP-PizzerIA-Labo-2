@@ -5,12 +5,49 @@ from src.utils.decoradores import registrar_log
 
 
 class Pizzeria:
-    def __init__(self, inventario):
+    def __init__(self, inventario, dinero_inicial=0):
         self.inventario = inventario # Guarda el inventario que utilizará la pizzería.
         self.__catalogo = {} # Guarda los productos usando el nombre como clave.
         self.__pedidos = [] # Guarda todos los pedidos creados.
         self.__ventas = [] # Guarda todas las ventas realizadas.
         self.__candado_ventas = threading.Lock() # Evita que dos hilos modifiquen las ventas al mismo tiempo.
+        self.__dinero = dinero_inicial # Guarda el dinero inicial con el que cuenta la pizzería.
+
+########
+
+    def reponer_stock(self, ingrediente, cantidad):
+        # Calcula el costo total de la reposición.
+        costo_total = self.inventario.calcular_costo_reposicion(ingrediente,cantidad)
+        # Verifica y descuenta el dinero antes de reponer.
+        self.restar_dinero(costo_total)
+        # Si hay dinero suficiente, repone el stock.
+        self.inventario.reponer(ingrediente,cantidad)
+        return costo_total
+
+########
+
+    def restar_dinero(self, monto):
+        # Resta dinero de la caja de la pizzería.
+        if monto < 0:
+            raise ValueError("No se puede restar un monto negativo.")
+
+        if monto > self.__dinero:
+            raise ValueError(f"No hay dinero suficiente. Disponible: ${self.__dinero:.2f}, costo: ${monto:.2f}")
+        self.__dinero -= monto
+
+########
+
+    def sumar_dinero(self, monto):
+        # Suma dinero a la caja de la pizzería.
+        if monto < 0:
+            raise ValueError("No se puede sumar un monto negativo.")
+        self.__dinero += monto
+
+########
+
+    def obtener_dinero(self):
+        # Devuelve el dinero disponible de la pizzería.
+        return self.__dinero
 
 ########
 
@@ -82,17 +119,23 @@ class Pizzeria:
 
     @registrar_log
     def registrar_venta(self, pedido):
-        with self.__candado_ventas: # Bloquea el acceso mientras se modifican las ventas.
-            items_venta = pedido.generar_items_venta() # Genera los registros de venta del pedido.
+        # Suma el total del pedido al dinero recaudado.
+        self.sumar_dinero(pedido.calcular_total())
 
-            for item_venta in items_venta: # Agrega cada registro a la lista de ventas.
+        # Bloquea la lista para que dos hilos no registren ventas al mismo tiempo.
+        with self.__candado_ventas:
+            items_venta = pedido.generar_items_venta()
+            for item_venta in items_venta:
                 self.__ventas.append(item_venta)
 
 #########
 
+    @registrar_log
     def cargar_datos(self, datos):
-        # Reemplaza el stock actual por el stock guardado.
+        # Carga el dinero guardado si existe.
+        self.__dinero = datos.get("dinero", self.__dinero)
         self.inventario.reemplazar_stock(datos["stock"])
+        # Reemplaza el stock actual por el stock guardado.)
         pedidos_cargados = []
         mayor_id = 0
 
@@ -115,6 +158,7 @@ class Pizzeria:
 
             for venta in datos["ventas"]:
                 self.__ventas.append(venta)
+        
 
 #########
 

@@ -16,7 +16,7 @@ def crear_stock_aleatorio(ingredientes):
     # Crea un stock aleatorio entre 40 y 100 para cada ingrediente.
     stock = {}
     for ingrediente in ingredientes:
-        stock[ingrediente] = random.randint(40, 100)
+        stock[ingrediente] = random.randint(30, 70)
 
     return stock
 
@@ -73,7 +73,9 @@ def crear_sistema():
     inventario = Inventario(stock_inicial,precios_stock)
 
     # Crea la pizzería.
-    pizzeria = Pizzeria(inventario)
+    dinero_inicial = random.randint(5000,20000)
+    pizzeria = Pizzeria(inventario,dinero_inicial)
+
 
     # Registra pizzas.
     pizzeria.registrar_producto(
