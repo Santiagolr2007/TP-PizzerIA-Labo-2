@@ -10,7 +10,7 @@ import pandas as pd
 
 def mostrar_catalogo(pizzeria):
     print("\n--- PRODUCTOS ---")
-    for numero, producto in enumerate(pizzeria.obtener_catalogo(), start=1):
+    for numero, producto in enumerate(pizzeria.obtener_catalogo(), start=1): #enumerate itera en pizzeria.obtener_catalogo y va colocando un contador junto a la variable
         print(f"{numero}. {producto.nombre} - ${producto.calcular_precio():.2f}")
 
 
@@ -20,11 +20,11 @@ def cargar_pedido(pizzeria):
         print("No hay productos cargados en el catálogo.")
         return
 
-    cliente = validar_texto(input("Cliente: "), "cliente")
+    cliente = validar_texto(input("Cliente: "), "cliente") # ("Nombre de cliente","Campo de texto")
     filas_productos = []
 
     # Arma un DataFrame con todos los productos disponibles.
-    for numero, producto in enumerate(catalogo, start=1):
+    for numero, producto in enumerate(catalogo, start=1): # genera el dataframe haciendo columna enumerada y las filas: producto, tipo, precio
         fila = {
             "numero": numero,
             "producto": producto.nombre,
@@ -35,13 +35,13 @@ def cargar_pedido(pizzeria):
 
     dataframe_productos = pd.DataFrame(filas_productos)
     print("\n--- PRODUCTOS DISPONIBLES ---\n")
-    print(tabulate(dataframe_productos, headers="keys", tablefmt="grid", showindex=False))
+    print(tabulate(dataframe_productos, headers="keys", tablefmt="grid", showindex=False)) #Muestra el dataframe como una tabla, mas estetico
     items = []
 
     while True:
         numero_producto = validar_entero_positivo(input("\nNúmero de producto: "),"número de producto")
 
-        if numero_producto < 1 or numero_producto > len(catalogo):
+        if numero_producto < 1 or numero_producto > len(catalogo): #Error si el numero_producto esta fuera del catalogo
             raise ValueError("El número de producto no existe.")
 
         cantidad = validar_entero_positivo(input("Cantidad: "), "cantidad")
@@ -88,7 +88,7 @@ def cargar_pedido(pizzeria):
 
     dataframe_resumen = pd.DataFrame(filas_resumen)
     print("\n--- RESUMEN DEL PEDIDO ---\n")
-    print(tabulate(dataframe_resumen, headers="keys", tablefmt="grid", showindex=False))
+    print(tabulate(dataframe_resumen, headers="keys", tablefmt="grid", showindex=False)) #Muestra el dataframe como una tabla, mas estetico
     print(f"\nTotal estimado: ${total_estimado:.2f}")
 
     while True:
@@ -112,7 +112,7 @@ def mostrar_stock(pizzeria):
     stock_detallado = pizzeria.inventario.obtener_stock_detallado()
     dataframe_stock = pd.DataFrame(stock_detallado)
     print("\n--- STOCK DETALLADO ---\n")
-    print(tabulate(dataframe_stock, headers="keys", tablefmt="grid", showindex=False))
+    print(tabulate(dataframe_stock, headers="keys", tablefmt="grid", showindex=False)) #Muestra el dataframe como una tabla, mas estetico
 
 
 
@@ -181,7 +181,6 @@ def ver_reportes_consola():
     print("\n========== VER REPORTES ==========")
     print("1. Reporte de ventas")
     print("2. Reporte de stock")
-
     opcion = input("Elegí un reporte: ")
 
     if opcion == "1":
@@ -202,7 +201,7 @@ def ver_reportes_consola():
     if dataframe.empty:
         print("El reporte está vacío.")
     else:
-        print(tabulate(dataframe, headers="keys", tablefmt="grid", showindex=False))
+        print(tabulate(dataframe, headers="keys", tablefmt="grid", showindex=False)) #Muestra el dataframe como una tabla, mas estetico
 
 
 def obtener_productos_agrupados_pedido(pedido):
@@ -223,7 +222,7 @@ def obtener_productos_agrupados_pedido(pedido):
 
         textos_productos.append(texto)
 
-    return ", ".join(textos_productos)
+    return ", ".join(textos_productos) #Une textos_productos con comas
 
 def imprimir_ticket_pedido(pedido):
     # Imprime un ticket simple del pedido creado.
@@ -265,7 +264,7 @@ def mostrar_pedidos(pizzeria):
 
     dataframe_pedidos = pd.DataFrame(filas)
     print("\n--- PEDIDOS ---\n")
-    print(tabulate(dataframe_pedidos,headers="keys",tablefmt="grid",showindex=False))
+    print(tabulate(dataframe_pedidos,headers="keys",tablefmt="grid",showindex=False)) #Muestra el dataframe como una tabla, mas estetico
 
 
 def reponer_stock(pizzeria):
@@ -274,7 +273,7 @@ def reponer_stock(pizzeria):
     # Renombra la columna cantidad para que sea más clara en la reposición.
     dataframe_stock = dataframe_stock.rename(columns={"cantidad": "stock_actual"})
     print("\n--- INGREDIENTES DISPONIBLES PARA REPONER ---\n")
-    print(tabulate(dataframe_stock,headers="keys",tablefmt="grid",showindex=False))
+    print(tabulate(dataframe_stock,headers="keys",tablefmt="grid",showindex=False)) #Muestra el dataframe como una tabla, mas estetico
     ingredientes_validos = []
 
     # Guarda los nombres de ingredientes válidos para poder validar la elección.
@@ -314,7 +313,7 @@ def guardar_respaldo(pizzeria):
         "dinero": pizzeria.obtener_dinero(),
         "stock": pizzeria.inventario.obtener_stock(),
         "ventas": pizzeria.obtener_ventas(),
-        "pedidos": [pedido.to_dict() for pedido in pizzeria.obtener_pedidos()],
+        "pedidos": [pedido.to_dict() for pedido in pizzeria.obtener_pedidos()], #.obtener_pedidos devuelve una lista cargada de pedidos, a cada pedido lo itera en la lista y lo transforma en diccionario para que se pueda meter en json. Esto es list comprehension
     }
 
     ruta = guardar_json(datos, "respaldo_pizzeria.json")
@@ -344,7 +343,7 @@ def ejecutar_menu():
     while True:
         print("\n========== PizzerIA ==========\n")
         print(f"Dinero disponible: ${pizzeria.obtener_dinero():.2f}\n")
-        print(tabulate(dataframe_menu,headers="keys",tablefmt="grid",showindex=False))
+        print(tabulate(dataframe_menu,headers="keys",tablefmt="grid",showindex=False)) #Muestra el dataframe como una tabla, mas estetico
         opcion = input("\nElegí una opción: ").strip()
         print()
 
@@ -378,7 +377,7 @@ def ejecutar_menu():
 
             elif opcion == "9":
                 ver_reportes_consola()
-
+                
             elif opcion == "10":
                 guardar_respaldo(pizzeria)
                 print("Programa finalizado.")

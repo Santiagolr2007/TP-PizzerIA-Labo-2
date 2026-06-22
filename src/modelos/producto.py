@@ -13,10 +13,7 @@ class Producto(ABC):
 
 
     @property
-    def precio_base(self):
-        
-        # Permite consultar el precio base del producto sin acceder directamente al atributo protegido.
-        
+    def precio_base(self):# Permite consultar el precio base del producto sin acceder directamente al atributo protegido.
         return self._precio_base
 
 
@@ -43,7 +40,7 @@ class Pizza(Producto):
         if ingredientes_extra is None:
             self.ingredientes_extra = {}
         else:
-            self.ingredientes_extra = dict(ingredientes_extra)
+            self.ingredientes_extra = dict(ingredientes_extra) #crea diccionario
 
 
     def calcular_precio(self):
@@ -81,7 +78,7 @@ class Pizza(Producto):
 
         # Agrega los ingredientes extra de cada variedad de pizza.
         for ingrediente, unidades in self.ingredientes_extra.items():
-            cantidad_actual = ingredientes.get(ingrediente, 0)
+            cantidad_actual = ingredientes.get(ingrediente, 0) #.get(clave,devuelve cero si error)
             ingredientes[ingrediente] = cantidad_actual + unidades * cantidad * factor_ingredientes
 
         return ingredientes

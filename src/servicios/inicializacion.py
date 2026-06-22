@@ -12,7 +12,6 @@ def convertir_dolares_a_pesos(precio_dolares):
 
 
 def crear_stock_aleatorio(ingredientes):
-
     # Crea un stock aleatorio entre 40 y 100 para cada ingrediente.
     stock = {}
     for ingrediente in ingredientes:
@@ -77,7 +76,7 @@ def crear_sistema():
     pizzeria = Pizzeria(inventario,dinero_inicial)
 
 
-    # Registra pizzas.
+    # Registra pizzas. llamando el metodo registrar_producto y pasandole nombre precio y tamaño y diccionario con ingredientes:cantidad
     pizzeria.registrar_producto(
         Pizza(
             "Pizza muzzarella",

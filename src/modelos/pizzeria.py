@@ -82,13 +82,11 @@ class Pizzeria:
 
             # Obtiene el objeto producto desde el catálogo.
             producto = self.__catalogo[nombre_producto]
-
             # Agrega el producto al pedido.
             pedido.agregar_producto(producto,cantidad)
 
         # Guarda el pedido en la lista general.
         self.__pedidos.append(pedido)
-
         return pedido
 
 ########
@@ -108,7 +106,6 @@ class Pizzeria:
         pedidos_pendientes = [] # Crea una lista para guardar los pedidos pendientes.
 
         for pedido in self.__pedidos: # Recorre todos los pedidos.
-
             # Agrega solamente los pedidos pendientes.
             if pedido.estado == "pendiente":
                 pedidos_pendientes.append(pedido)
@@ -121,7 +118,6 @@ class Pizzeria:
     def registrar_venta(self, pedido):
         # Suma el total del pedido al dinero recaudado.
         self.sumar_dinero(pedido.calcular_total())
-
         # Bloquea la lista para que dos hilos no registren ventas al mismo tiempo.
         with self.__candado_ventas:
             items_venta = pedido.generar_items_venta()
@@ -165,7 +161,6 @@ class Pizzeria:
     def obtener_ventas(self):
         with self.__candado_ventas: # Bloquea el acceso mientras se copian las ventas.
             copia_ventas = [] # Crea una lista para devolver una copia.
-
             for venta in self.__ventas: # Copia cada venta a la nueva lista.
                 copia_ventas.append(venta)
 

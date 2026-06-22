@@ -16,7 +16,7 @@ def obtener_carpeta_reportes():
 def obtener_ruta_reporte(nombre_archivo):
     # Arma la ruta completa del reporte.
     carpeta_reportes = obtener_carpeta_reportes()
-    return carpeta_reportes / nombre_archivo
+    return carpeta_reportes / nombre_archivo # A la ruta le agrega "nombre_archivo"
 
 
 @registrar_log
@@ -27,30 +27,30 @@ def generar_reporte_ventas(ventas,nombre_archivo="reporte_ventas.xlsx"):
     if dataframe.empty:
         reporte_ventas = pd.DataFrame([{"mensaje": "Todavía no existen ventas registradas."}])
     else:
-        dataframe = dataframe.sort_values(by=["fecha", "pedido_id"])
-        pedidos = dataframe[["pedido_id","fecha","cliente"]].drop_duplicates(subset=["pedido_id"])
+        dataframe = dataframe.sort_values(by=["fecha", "pedido_id"]) #Ordena en primer lugar por fecha y en segundo por pedido_id
+        pedidos = dataframe[["pedido_id","fecha","cliente"]].drop_duplicates(subset=["pedido_id"]) #elimina pedido_id duplicados, deja 1 solo
         filas_reporte = []
 
-        for indice, pedido in pedidos.iterrows():
+        for indice, pedido in pedidos.iterrows(): #itera fila por fila el dataframe
             pedido_id = pedido["pedido_id"]
             filas_pedido = dataframe[dataframe["pedido_id"] == pedido_id]
             productos_agrupados = filas_pedido.groupby("producto",as_index=False).agg(cantidad=("cantidad", "sum"),subtotal=("subtotal", "sum"))
+            #Agrupa los productos iguales sumando la cantidad y el subtotal
             textos_productos = []
 
-            for indice_producto, producto in productos_agrupados.iterrows():
-                texto_producto = (
-                    f"{producto['producto']} x{int(producto['cantidad'])} (${producto['subtotal']:.2f})")
-
+            for indice_producto, producto in productos_agrupados.iterrows(): #itera fila por fila el dataframe
+                texto_producto = (f"{producto['producto']} x{int(producto['cantidad'])} (${producto['subtotal']:.2f})") #
+                #"Monitor x1 ($250.00)"
                 textos_productos.append(texto_producto)
 
-            total_pedido = productos_agrupados["subtotal"].sum()
-            cantidad_total = productos_agrupados["cantidad"].sum()
+            total_pedido = productos_agrupados["subtotal"].sum() #suma subtotales para sacar el total final
+            cantidad_total = productos_agrupados["cantidad"].sum() #suma la cantidad de productos total final
 
             fila = {
                 "pedido_id": pedido_id,
                 "fecha": pedido["fecha"],
                 "cliente": pedido["cliente"],
-                "productos": ", ".join(textos_productos),
+                "productos": ", ".join(textos_productos), #Une los productos con una coma y espacio como separador.
                 "cantidad_total_productos": cantidad_total,
                 "total_vendido_pedido": total_pedido
             }
@@ -58,9 +58,9 @@ def generar_reporte_ventas(ventas,nombre_archivo="reporte_ventas.xlsx"):
             filas_reporte.append(fila)
 
         reporte_ventas = pd.DataFrame(filas_reporte)
-        reporte_ventas["total_vendido_hasta_el_momento"] = (reporte_ventas["total_vendido_pedido"].cumsum())
+        reporte_ventas["total_vendido_hasta_el_momento"] = (reporte_ventas["total_vendido_pedido"].cumsum()) #cumsum=suma acumulativa fila a fila
 
-    with pd.ExcelWriter(destino,engine="openpyxl") as escritor:
+    with pd.ExcelWriter(destino,engine="openpyxl") as escritor: #escribe archivo excel con el motor openpyxl
         reporte_ventas.to_excel(escritor,sheet_name="Ventas",index=False)
 
     return str(destino)
@@ -73,7 +73,7 @@ def generar_reporte_stock(stock,nombre_archivo="reporte_stock.xlsx"):
     dataframe = transformar_stock(stock)
     destino = obtener_ruta_reporte(nombre_archivo)
 
-    with pd.ExcelWriter(destino,engine="openpyxl") as escritor:
+    with pd.ExcelWriter(destino,engine="openpyxl") as escritor: #crea archivo excel y lo guarda en destino
         dataframe.to_excel(escritor,sheet_name="Stock",index=False)
 
     return str(destino)

@@ -6,7 +6,6 @@ from src.utils.validaciones import validar_entero_positivo
 class Inventario:
 
     def __init__(self, stock_inicial=None, precios_stock=None):
-
         # Crea el stock inicial.
         if stock_inicial is None:
             self.__stock = {}
@@ -57,7 +56,6 @@ class Inventario:
 ##########
 
     def obtener_stock_detallado(self):
-
         # Devuelve el stock con cantidad, precio unitario y valor total.
         with self.__candado:
             stock_detallado = []
@@ -65,9 +63,7 @@ class Inventario:
             for ingrediente, cantidad in self.__stock.items():
                 precio_unitario = self.__precios_stock.get(ingrediente, 0)
                 valor_total = cantidad * precio_unitario
-
                 fila = {"ingrediente": ingrediente,"cantidad": cantidad,"precio_unitario": precio_unitario,"valor_total_stock": valor_total}
-
                 stock_detallado.append(fila)
 
         return stock_detallado
@@ -75,7 +71,6 @@ class Inventario:
 #########
 
     def obtener_stock(self):
-
         # Solo un hilo puede acceder a esta sección a la vez.
         with self.__candado:
             # Devuelve una copia para evitar que se modifique el diccionario original desde afuera de la clase.
@@ -108,7 +103,6 @@ class Inventario:
 ########
 
     def descontar(self, ingredientes_necesarios):
-
         with self.__candado:
             faltantes = {}
             # Primero revisa si hay stock suficiente para todos los ingredientes.
@@ -122,7 +116,6 @@ class Inventario:
             # Si falta algún ingrediente, arma un mensaje y lanza una excepción.
             if len(faltantes) > 0:
                 detalle = ""
-
                 for ingrediente, cantidad_necesaria in faltantes.items():
                     detalle += (f"{ingrediente}: se necesitan {cantidad_necesaria};")
 

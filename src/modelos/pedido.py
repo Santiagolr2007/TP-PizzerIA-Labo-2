@@ -31,7 +31,6 @@ class Pedido:
         total = 0
         # Recorre los productos del pedido y acumula cada subtotal.
         for producto, cantidad in self.productos:
-
             precio_unitario = producto.calcular_precio()
             subtotal = precio_unitario * cantidad
             total += subtotal
@@ -52,7 +51,6 @@ class Pedido:
 
             # Suma las cantidades de ingredientes que se repiten.
             for nombre, unidades in necesarios.items():
-
                 cantidad_actual = ingredientes.get(nombre,0)
                 ingredientes[nombre] = (cantidad_actual + unidades)
 

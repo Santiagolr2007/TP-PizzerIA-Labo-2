@@ -15,24 +15,16 @@ def _cocinero(nombre, cola_pedidos, pizzeria):
 
             print(f"{nombre} comenzó el pedido #{pedido.pedido_id}.")
             pedido.cambiar_estado("en preparación")
-
             time.sleep(1)
-
             ingredientes = pedido.obtener_ingredientes_totales()
             pizzeria.inventario.descontar(ingredientes)
-
             pedido.cambiar_estado("entregado")
             pizzeria.registrar_venta(pedido)
-
             print(f"{nombre} terminó el pedido #{pedido.pedido_id}.")
 
         except Exception as error:
             try:
-                if pedido is not None and pedido.estado in {
-                    "pendiente",
-                    "en preparación",
-                }:
-                    pedido.cambiar_estado("cancelado")
+                if pedido is not None and pedido.estado in {"pendiente","en preparación",}:pedido.cambiar_estado("cancelado")
             except Exception:
                 pass
 
@@ -54,11 +46,9 @@ def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2):
     hilos = []
 
     for numero in range(cantidad_cocineros):
-        hilo = threading.Thread(
-            target=_cocinero,
-            args=(f"Cocinero {numero + 1}", cola_pedidos, pizzeria),
-            daemon=False,
-        )
+        hilo = threading.Thread(target=_cocinero,args=(f"Cocinero {numero + 1}", cola_pedidos, pizzeria),daemon=False,)
+        #daemon=false para que no para que no cierre el hilo
+
         hilo.start()
         hilos.append(hilo)
 
