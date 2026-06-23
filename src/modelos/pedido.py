@@ -16,6 +16,13 @@ class Pedido:
         self.productos = []
         self.__estado = "pendiente"
         self.fecha = datetime.now()
+        self.cocinero_asignado = ""
+        self.estacion_cocina = ""
+        self.tiempo_estimado = 0
+        self.tiempo_restante = 0
+        self.inicio_preparacion = ""
+        self.fin_preparacion = ""
+        self.motivo_cancelacion = ""
 
     @property
     def estado(self):
@@ -74,6 +81,23 @@ class Pedido:
 
         self.__estado = estado_normalizado
 
+    def asignar_cocina(self, cocinero, estacion, tiempo_estimado):
+        self.cocinero_asignado = validar_texto(cocinero, "cocinero")
+        self.estacion_cocina = validar_texto(estacion, "estacion")
+        self.tiempo_estimado = int(tiempo_estimado)
+        self.tiempo_restante = int(tiempo_estimado)
+        self.inicio_preparacion = datetime.now().isoformat()
+
+    def actualizar_tiempo_restante(self, tiempo_restante):
+        self.tiempo_restante = max(0, int(tiempo_restante))
+
+    def finalizar_cocina(self):
+        self.tiempo_restante = 0
+        self.fin_preparacion = datetime.now().isoformat()
+
+    def registrar_cancelacion(self, motivo):
+        self.motivo_cancelacion = str(motivo)
+
     def _normalizar_estado(self, estado):
         texto = validar_texto(estado, "estado").strip().lower()
         equivalencias = {
@@ -121,6 +145,13 @@ class Pedido:
         pedido.__estado = estado_guardado
         pedido.fecha = datetime.fromisoformat(datos["fecha"])
         pedido.productos = []
+        pedido.cocinero_asignado = datos.get("cocinero_asignado", "")
+        pedido.estacion_cocina = datos.get("estacion_cocina", "")
+        pedido.tiempo_estimado = int(datos.get("tiempo_estimado", 0) or 0)
+        pedido.tiempo_restante = int(datos.get("tiempo_restante", 0) or 0)
+        pedido.inicio_preparacion = datos.get("inicio_preparacion", "")
+        pedido.fin_preparacion = datos.get("fin_preparacion", "")
+        pedido.motivo_cancelacion = datos.get("motivo_cancelacion", "")
 
         for producto_guardado in datos["productos"]:
             nombre_producto = producto_guardado["nombre"]
@@ -146,5 +177,12 @@ class Pedido:
             "direccion": self.direccion,
             "fecha": self.fecha.isoformat(),
             "total": self.calcular_total(),
+            "cocinero_asignado": self.cocinero_asignado,
+            "estacion_cocina": self.estacion_cocina,
+            "tiempo_estimado": self.tiempo_estimado,
+            "tiempo_restante": self.tiempo_restante,
+            "inicio_preparacion": self.inicio_preparacion,
+            "fin_preparacion": self.fin_preparacion,
+            "motivo_cancelacion": self.motivo_cancelacion,
             "productos": productos_convertidos,
         }

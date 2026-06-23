@@ -3,7 +3,11 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from src.modelos.producto import Bebida, Empanada, Pizza
-from src.servicios.cocina_threads import procesar_pedidos_con_hilos
+from src.servicios.cocina_threads import (
+    calcular_tiempo_estimado,
+    determinar_estaciones_pedido,
+    procesar_pedidos_con_hilos,
+)
 from src.servicios.inicializacion import crear_sistema
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
 from src.servicios.reportes_excel import (generar_reporte_stock,generar_reporte_ventas,leer_reporte_excel,)
@@ -85,6 +89,8 @@ class PizzeriaApp(tk.Tk):
         self.current_view = "panel"
         self.nav_buttons = {}
         self.busy = False
+        self.cocina_eventos = []
+        self.cocina_tabla = None
 
         self.title("PizzerIA - Gestion de pizzeria")
         self.geometry("1180x720")
@@ -172,6 +178,7 @@ class PizzeriaApp(tk.Tk):
             ("panel", "Panel", self.mostrar_panel),
             ("catalogo", "Catalogo", self.mostrar_catalogo),
             ("pedidos", "Pedidos", self.mostrar_pedidos),
+            ("cocina", "Cocina", self.mostrar_cocina),
             ("stock", "Stock", self.mostrar_stock),
             ("reportes", "Reportes", self.mostrar_reportes),
             ("herramientas", "Herramientas", self.mostrar_herramientas),
@@ -453,6 +460,75 @@ class PizzeriaApp(tk.Tk):
             )
         return filas
 
+    def _tiempo_pedido_visible(self, pedido):
+        if pedido.estado == "en preparacion":
+            return f"{pedido.tiempo_restante or pedido.tiempo_estimado} min"
+
+        if pedido.estado == "pendiente":
+            return f"{calcular_tiempo_estimado(pedido)} min est."
+
+        if pedido.estado == "listo":
+            return "Listo"
+
+        return "-"
+
+    def _filas_cocina(self):
+        filas = []
+        estados_cocina = {"pendiente", "en preparacion", "listo", "en camino"}
+
+        for pedido in self.pizzeria.obtener_pedidos():
+            if pedido.estado not in estados_cocina:
+                continue
+
+            filas.append(
+                {
+                    "pedido_id": pedido.pedido_id,
+                    "cliente": pedido.cliente,
+                    "estado": estado_visible(pedido.estado),
+                    "estacion": pedido.estacion_cocina or determinar_estaciones_pedido(pedido),
+                    "cocinero": pedido.cocinero_asignado or "-",
+                    "tiempo": self._tiempo_pedido_visible(pedido),
+                    "entrega": pedido.tipo_entrega,
+                }
+            )
+
+        return filas
+
+    def _filas_estaciones(self):
+        resumen = {}
+
+        for pedido in self.pizzeria.obtener_pedidos():
+            if pedido.estado in {"entregado", "cancelado"}:
+                continue
+
+            estacion = pedido.estacion_cocina or determinar_estaciones_pedido(pedido)
+            if estacion not in resumen:
+                resumen[estacion] = {"estacion": estacion, "pendientes": 0, "en_preparacion": 0, "listos": 0}
+
+            if pedido.estado == "pendiente":
+                resumen[estacion]["pendientes"] += 1
+            elif pedido.estado == "en preparacion":
+                resumen[estacion]["en_preparacion"] += 1
+            elif pedido.estado == "listo":
+                resumen[estacion]["listos"] += 1
+
+        return list(resumen.values())
+
+    def _filas_eventos_cocina(self):
+        filas = []
+        for evento in self.cocina_eventos[:10]:
+            filas.append(
+                {
+                    "pedido_id": evento.get("pedido_id", "-"),
+                    "evento": estado_visible(evento.get("tipo", "")),
+                    "cocinero": evento.get("cocinero", "-"),
+                    "estacion": evento.get("estacion", "-"),
+                    "tiempo": f"{evento.get('tiempo_restante', 0)} min",
+                    "mensaje": evento.get("mensaje", ""),
+                }
+            )
+        return filas
+
     def _filas_stock(self):
         filas = []
         for fila in self.pizzeria.inventario.obtener_stock_detallado():
@@ -489,7 +565,7 @@ class PizzeriaApp(tk.Tk):
         self.current_view = "panel"
         self._seleccionar_nav("panel")
         self.page_title.set("Panel")
-        self.page_subtitle.set("Resumen general del negocio")
+        self.page_subtitle.set("Resumen operativo y cocina en vivo")
         self._limpiar_contenido()
         self._refrescar_caja()
 
@@ -499,18 +575,20 @@ class PizzeriaApp(tk.Tk):
         contenedor.grid_rowconfigure(2, weight=1)
 
         acciones = tk.Frame(contenedor, bg=self.colors["bg"])
-        acciones.grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        acciones.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         for texto, comando, variante in [
             ("Nuevo pedido", self.abrir_dialogo_pedido, "principal"),
             ("Procesar cocina", self.procesar_cocina, "info"),
+            ("Ver cocina", self.mostrar_cocina, "secundario"),
+            ("Nuevo producto", lambda: self.abrir_dialogo_producto(), "secundario"),
             ("Reponer stock", self.abrir_dialogo_reponer_stock, "exito"),
             ("Generar reportes", self.generar_reportes, "secundario"),
         ]:
             self._boton_accion(acciones, texto, comando, variante).pack(side="left", padx=(0, 10))
 
         metricas = tk.Frame(contenedor, bg=self.colors["bg"])
-        metricas.grid(row=1, column=0, sticky="ew", pady=(0, 14))
-        for columna in range(4):
+        metricas.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        for columna in range(6):
             metricas.grid_columnconfigure(columna, weight=1, uniform="metricas")
 
         pedidos = self.pizzeria.obtener_pedidos()
@@ -518,8 +596,10 @@ class PizzeriaApp(tk.Tk):
         datos_metricas = [
             ("Pedidos", len(pedidos), "Total cargado", self.colors["info"]),
             ("Pendientes", estados["pendiente"], "Para cocina", self.colors["accent"]),
+            ("Preparacion", estados["en preparacion"], "Trabajando ahora", self.colors["info"]),
             ("Listos", estados["listo"], "Para entregar", self.colors["success"]),
             ("Delivery", estados["en camino"], "En camino", self.colors["warning"]),
+            ("Stock bajo", self._stock_bajo(), "Ingredientes criticos", self.colors["danger"]),
         ]
 
         for columna, (titulo, valor, detalle, color) in enumerate(datos_metricas):
@@ -531,9 +611,45 @@ class PizzeriaApp(tk.Tk):
         cuerpo.grid_columnconfigure(0, weight=2)
         cuerpo.grid_columnconfigure(1, weight=1)
         cuerpo.grid_rowconfigure(0, weight=1)
+        cuerpo.grid_rowconfigure(1, weight=1)
+
+        seccion_cocina, body_cocina = self._crear_seccion(cuerpo, "Cocina en vivo", "Cocineros, estaciones y tiempo estimado")
+        seccion_cocina.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
+        columnas_cocina = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega")
+        frame_cocina, tabla_cocina = self._crear_tabla(
+            body_cocina,
+            columnas_cocina,
+            {
+                "pedido_id": "ID",
+                "cliente": "Cliente",
+                "estado": "Estado",
+                "estacion": "Estacion",
+                "cocinero": "Cocinero",
+                "tiempo": "Tiempo",
+                "entrega": "Entrega",
+            },
+            {"pedido_id": 55, "cliente": 130, "estado": 120, "estacion": 160, "cocinero": 120, "tiempo": 95, "entrega": 90},
+            alto=7,
+        )
+        frame_cocina.pack(fill="both", expand=True)
+        self._configurar_tags_pedidos(tabla_cocina)
+        self._llenar_tabla(tabla_cocina, columnas_cocina, self._filas_cocina(), self._tag_pedido)
+
+        seccion_estaciones, body_estaciones = self._crear_seccion(cuerpo, "Estaciones", "Carga actual por sector")
+        seccion_estaciones.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=(0, 10))
+        columnas_estaciones = ("estacion", "pendientes", "en_preparacion", "listos")
+        frame_estaciones, tabla_estaciones = self._crear_tabla(
+            body_estaciones,
+            columnas_estaciones,
+            {"estacion": "Estacion", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
+            {"estacion": 170, "pendientes": 70, "en_preparacion": 70, "listos": 70},
+            alto=7,
+        )
+        frame_estaciones.pack(fill="both", expand=True)
+        self._llenar_tabla(tabla_estaciones, columnas_estaciones, self._filas_estaciones())
 
         seccion_pedidos, body_pedidos = self._crear_seccion(cuerpo, "Pedidos recientes", "Ultimos movimientos del mostrador")
-        seccion_pedidos.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        seccion_pedidos.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(10, 0))
         columnas_pedidos = ("pedido_id", "cliente", "entrega", "estado", "total")
         frame_tabla, tabla = self._crear_tabla(
             body_pedidos,
@@ -548,7 +664,7 @@ class PizzeriaApp(tk.Tk):
         tabla.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla))
 
         seccion_stock, body_stock = self._crear_seccion(cuerpo, "Stock critico", "Ingredientes con poca disponibilidad")
-        seccion_stock.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        seccion_stock.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(10, 0))
         columnas_stock = ("ingrediente", "cantidad", "estado")
         frame_stock, tabla_stock = self._crear_tabla(
             body_stock,
@@ -871,6 +987,81 @@ class PizzeriaApp(tk.Tk):
         if estado in {"pendiente", "en preparacion", "listo", "en camino", "entregado", "cancelado"}:
             return estado
         return ""
+
+    def mostrar_cocina(self):
+        self.current_view = "cocina"
+        self._seleccionar_nav("cocina")
+        self.page_title.set("Cocina")
+        self.page_subtitle.set("Cocineros, estaciones, tiempos estimados y cola activa")
+        self._limpiar_contenido()
+        self._refrescar_caja()
+
+        contenedor = tk.Frame(self.content, bg=self.colors["bg"])
+        contenedor.pack(fill="both", expand=True)
+        contenedor.grid_columnconfigure(0, weight=2)
+        contenedor.grid_columnconfigure(1, weight=1)
+        contenedor.grid_rowconfigure(1, weight=1)
+
+        acciones = tk.Frame(contenedor, bg=self.colors["bg"])
+        acciones.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        self._boton_accion(acciones, "Procesar pendientes", self.procesar_cocina, "principal").pack(side="left", padx=(0, 10))
+        self._boton_accion(acciones, "Nuevo pedido", self.abrir_dialogo_pedido, "secundario").pack(side="left", padx=(0, 10))
+        self._boton_accion(acciones, "Actualizar", self.mostrar_cocina, "secundario").pack(side="left")
+
+        seccion_cola, body_cola = self._crear_seccion(contenedor, "Cola de cocina", "Pedidos pendientes, en preparacion y listos")
+        seccion_cola.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
+        columnas_cola = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega")
+        frame_cola, tabla_cola = self._crear_tabla(
+            body_cola,
+            columnas_cola,
+            {
+                "pedido_id": "ID",
+                "cliente": "Cliente",
+                "estado": "Estado",
+                "estacion": "Estacion",
+                "cocinero": "Cocinero",
+                "tiempo": "Tiempo",
+                "entrega": "Entrega",
+            },
+            {"pedido_id": 60, "cliente": 140, "estado": 120, "estacion": 170, "cocinero": 130, "tiempo": 100, "entrega": 100},
+            alto=15,
+        )
+        frame_cola.pack(fill="both", expand=True)
+        self._configurar_tags_pedidos(tabla_cola)
+        self._llenar_tabla(tabla_cola, columnas_cola, self._filas_cocina(), self._tag_pedido)
+        tabla_cola.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla_cola))
+
+        lateral = tk.Frame(contenedor, bg=self.colors["bg"])
+        lateral.grid(row=1, column=1, sticky="nsew", padx=(10, 0))
+        lateral.grid_columnconfigure(0, weight=1)
+        lateral.grid_rowconfigure(0, weight=1)
+        lateral.grid_rowconfigure(1, weight=1)
+
+        seccion_estaciones, body_estaciones = self._crear_seccion(lateral, "Estaciones", "Carga por sector")
+        seccion_estaciones.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        columnas_estaciones = ("estacion", "pendientes", "en_preparacion", "listos")
+        frame_estaciones, tabla_estaciones = self._crear_tabla(
+            body_estaciones,
+            columnas_estaciones,
+            {"estacion": "Estacion", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
+            {"estacion": 170, "pendientes": 70, "en_preparacion": 70, "listos": 70},
+            alto=6,
+        )
+        frame_estaciones.pack(fill="both", expand=True)
+        self._llenar_tabla(tabla_estaciones, columnas_estaciones, self._filas_estaciones())
+
+        seccion_eventos, body_eventos = self._crear_seccion(lateral, "Eventos recientes", "Actividad de hilos")
+        seccion_eventos.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
+        columnas_eventos = ("pedido_id", "evento", "cocinero", "tiempo", "mensaje")
+        frame_eventos, tabla_eventos = self._crear_tabla(
+            body_eventos,
+            columnas_eventos,
+            {"pedido_id": "ID", "evento": "Evento", "cocinero": "Cocinero", "tiempo": "Tiempo", "mensaje": "Mensaje"},
+            {"pedido_id": 55, "evento": 90, "cocinero": 110, "tiempo": 80, "mensaje": 280},
+            alto=6,
+        )
+        frame_eventos.pack(fill="both", expand=True)
+        self._llenar_tabla(tabla_eventos, columnas_eventos, self._filas_eventos_cocina())
 
     def mostrar_stock(self):
         self.current_view = "stock"
@@ -1343,6 +1534,17 @@ class PizzeriaApp(tk.Tk):
         self._set_status(f"Pedido #{pedido.pedido_id} cancelado.")
         self._refrescar_vista_actual()
 
+    def _registrar_evento_cocina(self, evento):
+        if evento.get("tipo") == "progreso":
+            return
+
+        self.cocina_eventos.insert(0, evento)
+        self.cocina_eventos = self.cocina_eventos[:30]
+        self._set_status(evento.get("mensaje", "Cocina actualizada."))
+
+        if self.current_view in {"panel", "cocina", "pedidos"}:
+            self._refrescar_vista_actual()
+
     def procesar_cocina(self):
         if self.busy:
             return
@@ -1358,7 +1560,15 @@ class PizzeriaApp(tk.Tk):
         def worker():
             error = None
             try:
-                procesar_pedidos_con_hilos(self.pizzeria, cantidad_cocineros=2)
+                def callback(evento):
+                    self.after(0, lambda evento=evento: self._registrar_evento_cocina(evento))
+
+                procesar_pedidos_con_hilos(
+                    self.pizzeria,
+                    cantidad_cocineros=2,
+                    callback=callback,
+                    velocidad=0.12,
+                )
             except Exception as exc:
                 error = exc
             resumen_despues = self._resumen_estados()
@@ -1449,6 +1659,7 @@ class PizzeriaApp(tk.Tk):
             "panel": self.mostrar_panel,
             "catalogo": self.mostrar_catalogo,
             "pedidos": self.mostrar_pedidos,
+            "cocina": self.mostrar_cocina,
             "stock": self.mostrar_stock,
             "reportes": self.mostrar_reportes,
             "herramientas": self.mostrar_herramientas,

@@ -6,7 +6,7 @@ La aplicacion incluye un panel general, gestion de productos, carga de pedidos c
 
 Los productos se modelan con programacion orientada a objetos usando una clase base `Producto` y clases hijas como `Pizza`, `Empanada` y `Bebida`. El catalogo puede ampliarse desde la interfaz grafica.
 
-Los pedidos pasan por estados como pendiente, en preparacion, listo, en camino, entregado o cancelado. La cocina procesa pedidos con hilos y deja los pedidos listos; luego el usuario puede avanzar el estado segun corresponda a retiro o delivery.
+Los pedidos pasan por estados como pendiente, en preparacion, listo, en camino, entregado o cancelado. La cocina procesa pedidos con hilos: cada cocinero toma pedidos en paralelo, se asignan estaciones como Horno, Empanadas o Bebidas, se calcula un tiempo estimado y se descuenta stock al entrar a preparacion. Luego el usuario puede avanzar el estado segun corresponda a retiro o delivery.
 
 Los reportes se generan con `openpyxl` usando listas y diccionarios nativos de Python.
 
