@@ -1,4 +1,5 @@
 import random
+from src.servicios.proveedores import consultar_dolar_oficial
 from src.modelos.inventario import Inventario
 from src.modelos.pizzeria import Pizzeria
 from src.modelos.producto import Bebida, Empanada, Pizza
@@ -7,8 +8,7 @@ _DOLAR_RESPALDO = 1500
 
 
 def obtener_dolar_referencia():
-    return _DOLAR_RESPALDO
-
+    return consultar_dolar_oficial()
 def convertir_dolares_a_pesos(precio_dolares):
     # Convierte un precio estimado en dólares a pesos argentinos.
     constante_dolar = obtener_dolar_referencia()

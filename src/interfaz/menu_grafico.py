@@ -1,15 +1,10 @@
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
-
 from src.servicios.cocina_threads import procesar_pedidos_con_hilos
 from src.servicios.inicializacion import crear_sistema
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
-from src.servicios.reportes_excel import (
-    generar_reporte_stock,
-    generar_reporte_ventas,
-    leer_reporte_excel,
-)
+from src.servicios.reportes_excel import (generar_reporte_stock,generar_reporte_ventas,leer_reporte_excel,)
 from src.utils.excepciones import PizzeriaError
 
 
@@ -55,18 +50,24 @@ class PizzeriaApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.colors = {
-            "bg": "#F3F4F6",
+            "bg": "#FFF7ED",
+            "bg_soft": "#FFEDD5",
             "surface": "#FFFFFF",
-            "sidebar": "#111827",
-            "sidebar_soft": "#1F2937",
-            "text": "#111827",
+            "surface_soft": "#FFF7ED",
+            "sidebar": "#2A120A",
+            "sidebar_soft": "#3B1D10",
+            "sidebar_hover": "#52250F",
+            "text": "#1F2937",
             "muted": "#6B7280",
-            "line": "#E5E7EB",
+            "line": "#FED7AA",
+            "shadow": "#E7C7A5",
             "accent": "#F97316",
-            "accent_dark": "#EA580C",
+            "accent_dark": "#C2410C",
+            "accent_soft": "#FDBA74",
             "success": "#059669",
             "danger": "#DC2626",
             "info": "#2563EB",
+            "warning": "#D97706",
         }
         self.current_view = "panel"
         self.nav_buttons = {}

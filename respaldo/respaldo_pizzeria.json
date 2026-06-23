@@ -1,0 +1,25 @@
+{
+    "dinero": 17217,
+    "stock": {
+        "harina": 52,
+        "salsa": 44,
+        "mozzarella": 62,
+        "jamon": 61,
+        "morron": 54,
+        "cebolla": 41,
+        "tomate": 54,
+        "ajo": 34,
+        "roquefort": 30,
+        "aceitunas": 50,
+        "tapas_empanada": 64,
+        "carne": 60,
+        "jamon_queso": 52,
+        "pollo": 70,
+        "verdura": 66,
+        "humita": 30,
+        "gaseosa": 30,
+        "agua": 40
+    },
+    "ventas": [],
+    "pedidos": []
+}
