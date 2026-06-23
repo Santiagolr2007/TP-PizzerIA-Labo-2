@@ -63,3 +63,12 @@
 [2026-06-23 05:05:11] OK - _cocinero
 [2026-06-23 05:05:11] OK - _cocinero
 [2026-06-23 05:16:30] OK - consultar_dolar_oficial
+[2026-06-23 16:39:18] OK - consultar_dolar_oficial
+[2026-06-23 16:46:34] OK - consultar_dolar_oficial
+[2026-06-23 16:46:56] OK - consultar_dolar_oficial
+[2026-06-23 16:47:38] OK - consultar_dolar_oficial
+[2026-06-23 16:48:43] ERROR - crear_pedido: El campo 'cliente' no puede estar vacío.
+[2026-06-23 16:48:59] OK - crear_pedido
+[2026-06-23 16:49:05] ERROR - generar_ticket_pdf: Para generar tickets PDF instala la dependencia 'reportlab'.
+[2026-06-23 16:49:54] OK - consultar_dolar_oficial
+[2026-06-23 16:50:07] OK - consultar_dolar_oficial

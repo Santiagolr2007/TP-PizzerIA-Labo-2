@@ -1,16 +1,16 @@
 {
-    "dinero": 8838,
+    "dinero": 11786,
     "catalogo": [
         {
             "nombre": "Pizza muzzarella",
-            "precio_base": 8149.0,
+            "precio_base": 8195.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {}
         },
         {
-            "nombre": "Pizza jamon y morron",
-            "precio_base": 9631.0,
+            "nombre": "Pizza jamón y morrón",
+            "precio_base": 9685.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {
@@ -20,7 +20,7 @@
         },
         {
             "nombre": "Pizza fugazzeta",
-            "precio_base": 8890.0,
+            "precio_base": 8940.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {
@@ -29,7 +29,7 @@
         },
         {
             "nombre": "Pizza napolitana",
-            "precio_base": 9187.0,
+            "precio_base": 9238.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {
@@ -39,7 +39,7 @@
         },
         {
             "nombre": "Pizza roquefort",
-            "precio_base": 10076.0,
+            "precio_base": 10132.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {
@@ -48,7 +48,7 @@
         },
         {
             "nombre": "Pizza con aceitunas",
-            "precio_base": 8594.0,
+            "precio_base": 8642.0,
             "tipo": "Pizza",
             "tamanio": "grande",
             "ingredientes_extra": {
@@ -57,66 +57,66 @@
         },
         {
             "nombre": "Empanada de carne",
-            "precio_base": 1185.0,
+            "precio_base": 1192.0,
             "tipo": "Empanada",
             "ingrediente_relleno": "carne"
         },
         {
-            "nombre": "Empanada de jamon y queso",
-            "precio_base": 1185.0,
+            "nombre": "Empanada de jamón y queso",
+            "precio_base": 1192.0,
             "tipo": "Empanada",
             "ingrediente_relleno": "jamon_queso"
         },
         {
             "nombre": "Empanada de pollo",
-            "precio_base": 1185.0,
+            "precio_base": 1192.0,
             "tipo": "Empanada",
             "ingrediente_relleno": "pollo"
         },
         {
             "nombre": "Empanada de verdura",
-            "precio_base": 1111.0,
+            "precio_base": 1117.0,
             "tipo": "Empanada",
             "ingrediente_relleno": "verdura"
         },
         {
             "nombre": "Empanada de humita",
-            "precio_base": 1111.0,
+            "precio_base": 1117.0,
             "tipo": "Empanada",
             "ingrediente_relleno": "humita"
         },
         {
             "nombre": "Gaseosa",
-            "precio_base": 2519.0,
+            "precio_base": 2533.0,
             "tipo": "Bebida",
             "ingrediente_stock": "gaseosa"
         },
         {
             "nombre": "Agua",
-            "precio_base": 1481.0,
+            "precio_base": 1490.0,
             "tipo": "Bebida",
             "ingrediente_stock": "agua"
         }
     ],
     "stock": {
-        "harina": 43,
+        "harina": 35,
         "salsa": 70,
-        "mozzarella": 51,
-        "jamon": 69,
-        "morron": 59,
-        "cebolla": 68,
-        "tomate": 53,
-        "ajo": 46,
-        "roquefort": 30,
-        "aceitunas": 61,
-        "tapas_empanada": 61,
-        "carne": 44,
-        "jamon_queso": 68,
-        "pollo": 48,
-        "verdura": 53,
-        "humita": 38,
-        "gaseosa": 55,
-        "agua": 42
+        "mozzarella": 58,
+        "jamon": 33,
+        "morron": 61,
+        "cebolla": 44,
+        "tomate": 50,
+        "ajo": 36,
+        "roquefort": 62,
+        "aceitunas": 38,
+        "tapas_empanada": 44,
+        "carne": 30,
+        "jamon_queso": 65,
+        "pollo": 56,
+        "verdura": 57,
+        "humita": 33,
+        "gaseosa": 60,
+        "agua": 65
     },
     "ventas": [],
     "pedidos": []

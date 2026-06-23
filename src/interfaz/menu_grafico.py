@@ -10,7 +10,10 @@ from src.servicios.cocina_threads import (
 )
 from src.servicios.inicializacion import crear_sistema
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
+from src.servicios.promociones import calcular_promociones_pedido
 from src.servicios.reportes_excel import (generar_reporte_stock,generar_reporte_ventas,leer_reporte_excel,)
+from src.servicios.tickets_pdf import generar_ticket_pdf
+from src.servicios.usuarios import cambiar_contrasenia, validar_usuario
 from src.utils.excepciones import PizzeriaError
 
 
@@ -43,22 +46,65 @@ def leer_importe(texto):
 
 
 def estado_visible(estado):
-    return str(estado).replace("_", " ").capitalize()
+    estados = {
+        "pendiente": "Pendiente",
+        "en preparacion": "En preparación",
+        "listo": "Listo",
+        "en camino": "En camino",
+        "entregado": "Entregado",
+        "cancelado": "Cancelado",
+    }
+    texto = str(estado).strip().lower()
+    return estados.get(texto, str(estado).replace("_", " ").capitalize())
+
+
+def nombre_ingrediente_visible(nombre):
+    ingredientes = {
+        "jamon": "jamón",
+        "morron": "morrón",
+        "jamon_queso": "jamón y queso",
+        "tapas_empanada": "tapas de empanada",
+    }
+    texto = str(nombre).strip()
+    return ingredientes.get(texto.lower(), texto.replace("_", " "))
+
+
+def capitalizar_visible(texto):
+    texto_visible = nombre_ingrediente_visible(texto)
+    if not texto_visible:
+        return ""
+    return texto_visible[0].upper() + texto_visible[1:]
+
+
+def normalizar_ingrediente_ingresado(nombre):
+    ingredientes = {
+        "jamón": "jamon",
+        "morrón": "morron",
+        "jamón y queso": "jamon_queso",
+        "tapas de empanada": "tapas_empanada",
+    }
+    texto = str(nombre).strip().lower()
+    return ingredientes.get(texto, texto)
 
 
 def obtener_resumen_productos(pedido):
     productos_agrupados = {}
 
-    for producto, cantidad in pedido.productos:
-        if producto.nombre not in productos_agrupados:
-            productos_agrupados[producto.nombre] = {"cantidad": 0, "subtotal": 0}
+    for linea in pedido.iterar_lineas_detalle():
+        nombre = linea["nombre"]
+        if nombre not in productos_agrupados:
+            productos_agrupados[nombre] = {"cantidad": 0, "subtotal": 0, "descuento": 0}
 
-        productos_agrupados[producto.nombre]["cantidad"] += cantidad
-        productos_agrupados[producto.nombre]["subtotal"] += producto.calcular_precio() * cantidad
+        productos_agrupados[nombre]["cantidad"] += linea["cantidad"]
+        productos_agrupados[nombre]["subtotal"] += linea["subtotal"]
+        productos_agrupados[nombre]["descuento"] += linea["descuento"]
 
     textos = []
     for nombre_producto, datos in productos_agrupados.items():
-        textos.append(f"{nombre_producto} x{datos['cantidad']} ({formato_moneda(datos['subtotal'])})")
+        texto = f"{nombre_producto} x{datos['cantidad']} ({formato_moneda(datos['subtotal'])})"
+        if datos["descuento"]:
+            texto += " promo"
+        textos.append(texto)
 
     return ", ".join(textos)
 
@@ -88,11 +134,13 @@ class PizzeriaApp(tk.Tk):
         }
         self.current_view = "panel"
         self.nav_buttons = {}
+        self.admin_sidebar_buttons = []
         self.busy = False
         self.cocina_eventos = []
         self.cocina_tabla = None
+        self.usuario_actual = None
 
-        self.title("PizzerIA - Gestion de pizzeria")
+        self.title("PizzerIA - Gestión de pizzería")
         self.geometry("1180x720")
         self.minsize(1020, 640)
         self.configure(bg=self.colors["bg"])
@@ -100,11 +148,16 @@ class PizzeriaApp(tk.Tk):
         self.pizzeria = crear_sistema()
         self.page_title = tk.StringVar(value="Panel")
         self.page_subtitle = tk.StringVar(value="Resumen general del negocio")
+        self.money_label_text = tk.StringVar(value="Caja disponible")
         self.money_text = tk.StringVar()
         self.status_text = tk.StringVar(value="Sistema iniciado correctamente.")
 
         self._configurar_estilos()
         self._crear_layout()
+        self._mostrar_login()
+        if self.usuario_actual is None:
+            return
+        self._actualizar_permisos_nav()
         self.mostrar_panel()
         self.protocol("WM_DELETE_WINDOW", self._cerrar_aplicacion)
 
@@ -167,7 +220,7 @@ class PizzeriaApp(tk.Tk):
         ).pack(fill="x")
         tk.Label(
             marca,
-            text="Gestion operativa",
+            text="Gestión operativa",
             bg=self.colors["sidebar"],
             fg="#CBD5E1",
             font=("Segoe UI", 10),
@@ -176,7 +229,7 @@ class PizzeriaApp(tk.Tk):
 
         navegacion = [
             ("panel", "Panel", self.mostrar_panel),
-            ("catalogo", "Catalogo", self.mostrar_catalogo),
+            ("catalogo", "Catálogo", self.mostrar_catalogo),
             ("pedidos", "Pedidos", self.mostrar_pedidos),
             ("cocina", "Cocina", self.mostrar_cocina),
             ("stock", "Stock", self.mostrar_stock),
@@ -205,8 +258,9 @@ class PizzeriaApp(tk.Tk):
 
         separador = tk.Frame(self.sidebar, height=1, bg="#374151")
         separador.pack(fill="x", padx=22, pady=18)
-        self._crear_boton_sidebar("Guardar respaldo", self.guardar_respaldo)
-        self._crear_boton_sidebar("Cargar respaldo", self.cargar_respaldo)
+        self._crear_boton_sidebar("Cambiar usuario", self.cambiar_usuario)
+        self.admin_sidebar_buttons.append(self._crear_boton_sidebar("Guardar respaldo", self.guardar_respaldo))
+        self.admin_sidebar_buttons.append(self._crear_boton_sidebar("Cargar respaldo", self.cargar_respaldo))
 
         self.main = tk.Frame(self, bg=self.colors["bg"])
         self.main.grid(row=0, column=1, sticky="nsew")
@@ -238,7 +292,7 @@ class PizzeriaApp(tk.Tk):
         caja.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
         tk.Label(
             caja,
-            text="Caja disponible",
+            textvariable=self.money_label_text,
             bg=self.colors["surface"],
             fg=self.colors["muted"],
             font=("Segoe UI", 9),
@@ -287,8 +341,12 @@ class PizzeriaApp(tk.Tk):
 
     def _seleccionar_nav(self, clave):
         for clave_boton, boton in self.nav_buttons.items():
+            if not self._puede_acceder(clave_boton):
+                boton.configure(state="disabled", bg=self.colors["sidebar"], fg="#6B7280")
+                continue
             activo = clave_boton == clave
             boton.configure(
+                state="normal",
                 bg=self.colors["accent"] if activo else self.colors["sidebar"],
                 fg="#FFFFFF" if activo else "#D1D5DB",
             )
@@ -298,10 +356,132 @@ class PizzeriaApp(tk.Tk):
             widget.destroy()
 
     def _refrescar_caja(self):
-        self.money_text.set(formato_moneda(self.pizzeria.obtener_dinero()))
+        if self._es_administrador():
+            self.money_label_text.set("Caja disponible")
+            self.money_text.set(formato_moneda(self.pizzeria.obtener_dinero()))
+            return
+
+        self.money_label_text.set("Usuario activo")
+        rol = self.usuario_actual.get("rol", "Empleado") if self.usuario_actual else "Empleado"
+        self.money_text.set(rol)
 
     def _set_status(self, texto):
         self.status_text.set(texto)
+
+    def _es_administrador(self):
+        return bool(self.usuario_actual and self.usuario_actual.get("rol") == "Administrador")
+
+    def _puede_acceder(self, vista):
+        if self._es_administrador():
+            return True
+        return vista in {"panel", "pedidos", "cocina", "stock"}
+
+    def _requiere_admin(self, accion="realizar esta acción"):
+        if self._es_administrador():
+            return True
+        messagebox.showwarning("Permiso requerido", f"Solo el administrador puede {accion}.")
+        return False
+
+    def _actualizar_permisos_nav(self):
+        for clave, boton in self.nav_buttons.items():
+            if self._puede_acceder(clave):
+                boton.configure(state="normal")
+            else:
+                boton.configure(state="disabled", bg=self.colors["sidebar"], fg="#6B7280")
+        for boton in self.admin_sidebar_buttons:
+            if self._es_administrador():
+                boton.configure(state="normal", fg="#D1D5DB")
+            else:
+                boton.configure(state="disabled", fg="#6B7280")
+
+    def _mostrar_login(self):
+        ventana = tk.Toplevel(self)
+        ventana.title("Iniciar sesión")
+        ventana.geometry("440x420")
+        ventana.resizable(False, False)
+        ventana.configure(bg=self.colors["bg"])
+        ventana.transient(self)
+        ventana.grab_set()
+
+        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        marco.pack(fill="both", expand=True, padx=24, pady=24)
+
+        tk.Label(
+            marco,
+            text="PizzerIA",
+            bg=self.colors["surface"],
+            fg=self.colors["text"],
+            font=("Segoe UI", 24, "bold"),
+        ).pack(anchor="w", padx=22, pady=(24, 2))
+        tk.Label(
+            marco,
+            text="Ingresa con tu usuario para continuar",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 10),
+        ).pack(anchor="w", padx=22, pady=(0, 20))
+
+        formulario = tk.Frame(marco, bg=self.colors["surface"])
+        formulario.pack(fill="x", padx=22)
+        formulario.grid_columnconfigure(0, weight=1)
+
+        usuario = tk.StringVar(value="administrador")
+        contrasenia = tk.StringVar()
+
+        tk.Label(formulario, text="Usuario", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 6))
+        entrada_usuario = ttk.Entry(formulario, textvariable=usuario)
+        entrada_usuario.grid(row=1, column=0, sticky="ew", pady=(0, 14))
+
+        tk.Label(formulario, text="Contraseña", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", pady=(0, 6))
+        entrada_clave = ttk.Entry(formulario, textvariable=contrasenia, show="*")
+        entrada_clave.grid(row=3, column=0, sticky="ew", pady=(0, 14))
+
+        ayuda = tk.Label(
+            marco,
+            text="Usuarios iniciales: administrador/admin123 | empleado/empleado123",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 8),
+            wraplength=360,
+        )
+        ayuda.pack(anchor="w", padx=22, pady=(2, 0))
+
+        def cerrar():
+            self.usuario_actual = None
+            ventana.destroy()
+            self.destroy()
+
+        def ingresar(_evento=None):
+            try:
+                self.usuario_actual = validar_usuario(usuario.get(), contrasenia.get())
+            except ValueError as error:
+                messagebox.showerror("Acceso denegado", str(error), parent=ventana)
+                return
+
+            self._set_status(
+                f"Sesión iniciada: {self.usuario_actual['nombre']} ({self.usuario_actual['rol']})."
+            )
+            ventana.destroy()
+
+        pie = tk.Frame(marco, bg=self.colors["surface"])
+        pie.pack(fill="x", padx=22, pady=(24, 20))
+        self._boton_accion(pie, "Ingresar", ingresar, "principal").pack(side="right")
+        self._boton_accion(pie, "Salir", cerrar, "secundario").pack(side="right", padx=(0, 10))
+
+        ventana.protocol("WM_DELETE_WINDOW", cerrar)
+        entrada_clave.bind("<Return>", ingresar)
+        entrada_usuario.focus_set()
+        self.wait_window(ventana)
+
+    def cambiar_usuario(self):
+        self._mostrar_login()
+        if self.usuario_actual is None:
+            return
+        self._actualizar_permisos_nav()
+        if not self._puede_acceder(self.current_view):
+            self.mostrar_panel()
+        else:
+            self._refrescar_vista_actual()
 
     def _boton_accion(self, parent, texto, comando, variante="principal"):
         colores = {
@@ -413,17 +593,18 @@ class PizzeriaApp(tk.Tk):
         if isinstance(producto, Pizza):
             extras = []
             for ingrediente, cantidad in producto.ingredientes_extra.items():
-                extras.append(f"{ingrediente} x{cantidad}")
-            detalle = f"Tamanio {producto.tamanio}"
+                extras.append(f"{nombre_ingrediente_visible(ingrediente)} x{cantidad}")
+            detalle = f"Tamaño {producto.tamanio}"
             if extras:
                 detalle += " | " + ", ".join(extras)
             return detalle
 
         if isinstance(producto, Empanada):
-            return f"Relleno: {producto.ingrediente_relleno}"
+            return f"Relleno: {nombre_ingrediente_visible(producto.ingrediente_relleno)}"
 
         if isinstance(producto, Bebida):
-            return f"Stock asociado: {producto.ingrediente_stock or 'sin control'}"
+            ingrediente = producto.ingrediente_stock or "sin control"
+            return f"Stock asociado: {nombre_ingrediente_visible(ingrediente)}"
 
         return ""
 
@@ -455,6 +636,7 @@ class PizzeriaApp(tk.Tk):
                     "direccion": pedido.direccion or "-",
                     "estado": estado_visible(pedido.estado),
                     "productos": obtener_resumen_productos(pedido),
+                    "descuento": formato_moneda(pedido.calcular_descuento_total()),
                     "total": formato_moneda(pedido.calcular_total()),
                 }
             )
@@ -535,7 +717,7 @@ class PizzeriaApp(tk.Tk):
             cantidad = fila["cantidad"]
             filas.append(
                 {
-                    "ingrediente": fila["ingrediente"],
+                    "ingrediente": capitalizar_visible(fila["ingrediente"]),
                     "cantidad": formato_numero(cantidad),
                     "precio_unitario": formato_moneda(fila["precio_unitario"]),
                     "valor_total_stock": formato_moneda(fila["valor_total_stock"]),
@@ -576,14 +758,21 @@ class PizzeriaApp(tk.Tk):
 
         acciones = tk.Frame(contenedor, bg=self.colors["bg"])
         acciones.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        for texto, comando, variante in [
+        acciones_panel = [
             ("Nuevo pedido", self.abrir_dialogo_pedido, "principal"),
             ("Procesar cocina", self.procesar_cocina, "info"),
             ("Ver cocina", self.mostrar_cocina, "secundario"),
-            ("Nuevo producto", lambda: self.abrir_dialogo_producto(), "secundario"),
-            ("Reponer stock", self.abrir_dialogo_reponer_stock, "exito"),
-            ("Generar reportes", self.generar_reportes, "secundario"),
-        ]:
+        ]
+        if self._es_administrador():
+            acciones_panel.extend(
+                [
+                    ("Nuevo producto", lambda: self.abrir_dialogo_producto(), "secundario"),
+                    ("Reponer stock", self.abrir_dialogo_reponer_stock, "exito"),
+                    ("Generar reportes", self.generar_reportes, "secundario"),
+                ]
+            )
+
+        for texto, comando, variante in acciones_panel:
             self._boton_accion(acciones, texto, comando, variante).pack(side="left", padx=(0, 10))
 
         metricas = tk.Frame(contenedor, bg=self.colors["bg"])
@@ -596,7 +785,7 @@ class PizzeriaApp(tk.Tk):
         datos_metricas = [
             ("Pedidos", len(pedidos), "Total cargado", self.colors["info"]),
             ("Pendientes", estados["pendiente"], "Para cocina", self.colors["accent"]),
-            ("Preparacion", estados["en preparacion"], "Trabajando ahora", self.colors["info"]),
+            ("Preparación", estados["en preparacion"], "Trabajando ahora", self.colors["info"]),
             ("Listos", estados["listo"], "Para entregar", self.colors["success"]),
             ("Delivery", estados["en camino"], "En camino", self.colors["warning"]),
             ("Stock bajo", self._stock_bajo(), "Ingredientes criticos", self.colors["danger"]),
@@ -623,7 +812,7 @@ class PizzeriaApp(tk.Tk):
                 "pedido_id": "ID",
                 "cliente": "Cliente",
                 "estado": "Estado",
-                "estacion": "Estacion",
+                "estacion": "Estación",
                 "cocinero": "Cocinero",
                 "tiempo": "Tiempo",
                 "entrega": "Entrega",
@@ -641,7 +830,7 @@ class PizzeriaApp(tk.Tk):
         frame_estaciones, tabla_estaciones = self._crear_tabla(
             body_estaciones,
             columnas_estaciones,
-            {"estacion": "Estacion", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
+            {"estacion": "Estación", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
             {"estacion": 170, "pendientes": 70, "en_preparacion": 70, "listos": 70},
             alto=7,
         )
@@ -713,14 +902,18 @@ class PizzeriaApp(tk.Tk):
         return marco
 
     def mostrar_catalogo(self):
+        if not self._requiere_admin("administrar el catálogo"):
+            self.mostrar_panel()
+            return
+
         self.current_view = "catalogo"
         self._seleccionar_nav("catalogo")
-        self.page_title.set("Catalogo")
+        self.page_title.set("Catálogo")
         self.page_subtitle.set("Productos disponibles para vender")
         self._limpiar_contenido()
         self._refrescar_caja()
 
-        seccion, cuerpo = self._crear_seccion(self.content, "Productos", "Busca por nombre o categoria")
+        seccion, cuerpo = self._crear_seccion(self.content, "Productos", "Busca por nombre o categoría")
         seccion.pack(fill="both", expand=True)
 
         barra = tk.Frame(cuerpo, bg=self.colors["surface"])
@@ -737,7 +930,7 @@ class PizzeriaApp(tk.Tk):
         frame_tabla, tabla = self._crear_tabla(
             cuerpo,
             columnas,
-            {"numero": "#", "producto": "Producto", "categoria": "Categoria", "detalle": "Detalle", "precio": "Precio"},
+            {"numero": "#", "producto": "Producto", "categoria": "Categoría", "detalle": "Detalle", "precio": "Precio"},
             {"numero": 60, "producto": 240, "categoria": 130, "detalle": 280, "precio": 120},
             alto=16,
         )
@@ -753,7 +946,7 @@ class PizzeriaApp(tk.Tk):
     def _producto_desde_tabla_catalogo(self, tabla):
         seleccion = tabla.selection()
         if not seleccion:
-            messagebox.showwarning("Producto requerido", "Selecciona un producto del catalogo.")
+            messagebox.showwarning("Producto requerido", "Selecciona un producto del catálogo.")
             return None
 
         valores = tabla.item(seleccion[0], "values")
@@ -776,7 +969,7 @@ class PizzeriaApp(tk.Tk):
         if producto is None:
             return
 
-        if not messagebox.askyesno("Eliminar producto", f"Eliminar '{producto.nombre}' del catalogo?"):
+        if not messagebox.askyesno("Eliminar producto", f"¿Eliminar '{producto.nombre}' del catálogo?"):
             return
 
         try:
@@ -789,6 +982,9 @@ class PizzeriaApp(tk.Tk):
         self.mostrar_catalogo()
 
     def abrir_dialogo_producto(self, producto=None):
+        if not self._requiere_admin("gestionar productos"):
+            return
+
         ventana = tk.Toplevel(self)
         ventana.title("Editar producto" if producto else "Nuevo producto")
         ventana.geometry("560x560")
@@ -822,7 +1018,7 @@ class PizzeriaApp(tk.Tk):
         ).pack(anchor="w", padx=18, pady=(18, 4))
         tk.Label(
             marco,
-            text="Los cambios se aplican al catalogo para nuevos pedidos.",
+            text="Los cambios se aplican al catálogo para nuevos pedidos.",
             bg=self.colors["surface"],
             fg=self.colors["muted"],
             font=("Segoe UI", 9),
@@ -841,7 +1037,7 @@ class PizzeriaApp(tk.Tk):
                 font=("Segoe UI", 10, "bold"),
             ).grid(row=fila, column=0, sticky="w", pady=(0, 6))
 
-        etiqueta("Categoria", 0)
+        etiqueta("Categoría", 0)
         combo_categoria = ttk.Combobox(formulario, textvariable=categoria, values=("Pizza", "Empanada", "Bebida"), state="readonly")
         combo_categoria.grid(row=1, column=0, sticky="ew", pady=(0, 12))
 
@@ -859,11 +1055,11 @@ class PizzeriaApp(tk.Tk):
         frame_empanada = tk.Frame(campos_tipo, bg=self.colors["surface"])
         frame_bebida = tk.Frame(campos_tipo, bg=self.colors["surface"])
 
-        tk.Label(frame_pizza, text="Tamanio", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        tk.Label(frame_pizza, text="Tamaño", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
         ttk.Combobox(frame_pizza, textvariable=tamanio, values=("chica", "mediana", "grande"), state="readonly").pack(fill="x", pady=(0, 12))
         tk.Label(frame_pizza, text="Ingredientes extra", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
         ttk.Entry(frame_pizza, textvariable=extras).pack(fill="x")
-        tk.Label(frame_pizza, text="Formato: jamon:2, morron:1", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
+        tk.Label(frame_pizza, text="Formato: jamón:2, morrón:1", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
 
         tk.Label(frame_empanada, text="Ingrediente de relleno", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
         ttk.Entry(frame_empanada, textvariable=relleno).pack(fill="x")
@@ -892,7 +1088,7 @@ class PizzeriaApp(tk.Tk):
                 if ":" not in parte:
                     raise ValueError("Los extras deben tener formato ingrediente:cantidad.")
                 ingrediente, cantidad_texto = parte.split(":", 1)
-                ingrediente = ingrediente.strip().lower()
+                ingrediente = normalizar_ingrediente_ingresado(ingrediente)
                 cantidad = int(cantidad_texto.strip())
                 if not ingrediente or cantidad <= 0:
                     raise ValueError("Cada ingrediente extra debe tener una cantidad mayor que cero.")
@@ -951,9 +1147,10 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(barra, "Procesar cocina", self.procesar_cocina, "info").pack(side="left", padx=(0, 10))
         self._boton_accion(barra, "Avanzar estado", lambda: self.avanzar_pedido_desde_tabla(tabla), "exito").pack(side="left", padx=(0, 10))
         self._boton_accion(barra, "Cancelar pedido", lambda: self.cancelar_pedido_desde_tabla(tabla), "peligro").pack(side="left", padx=(0, 10))
+        self._boton_accion(barra, "Ticket PDF", lambda: self.exportar_ticket_desde_tabla(tabla), "secundario").pack(side="left", padx=(0, 10))
         self._boton_accion(barra, "Actualizar", self.mostrar_pedidos, "secundario").pack(side="left")
 
-        columnas = ("pedido_id", "cliente", "entrega", "direccion", "estado", "productos", "total")
+        columnas = ("pedido_id", "cliente", "entrega", "direccion", "estado", "productos", "descuento", "total")
         frame_tabla, tabla = self._crear_tabla(
             cuerpo,
             columnas,
@@ -961,12 +1158,22 @@ class PizzeriaApp(tk.Tk):
                 "pedido_id": "ID",
                 "cliente": "Cliente",
                 "entrega": "Entrega",
-                "direccion": "Direccion",
+                "direccion": "Dirección",
                 "estado": "Estado",
                 "productos": "Productos",
+                "descuento": "Desc.",
                 "total": "Total",
             },
-            {"pedido_id": 70, "cliente": 140, "entrega": 95, "direccion": 180, "estado": 120, "productos": 330, "total": 120},
+            {
+                "pedido_id": 70,
+                "cliente": 140,
+                "entrega": 95,
+                "direccion": 170,
+                "estado": 120,
+                "productos": 300,
+                "descuento": 100,
+                "total": 120,
+            },
             alto=16,
         )
         frame_tabla.pack(fill="both", expand=True)
@@ -1008,7 +1215,7 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(acciones, "Nuevo pedido", self.abrir_dialogo_pedido, "secundario").pack(side="left", padx=(0, 10))
         self._boton_accion(acciones, "Actualizar", self.mostrar_cocina, "secundario").pack(side="left")
 
-        seccion_cola, body_cola = self._crear_seccion(contenedor, "Cola de cocina", "Pedidos pendientes, en preparacion y listos")
+        seccion_cola, body_cola = self._crear_seccion(contenedor, "Cola de cocina", "Pedidos pendientes, en preparación y listos")
         seccion_cola.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         columnas_cola = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega")
         frame_cola, tabla_cola = self._crear_tabla(
@@ -1018,7 +1225,7 @@ class PizzeriaApp(tk.Tk):
                 "pedido_id": "ID",
                 "cliente": "Cliente",
                 "estado": "Estado",
-                "estacion": "Estacion",
+                "estacion": "Estación",
                 "cocinero": "Cocinero",
                 "tiempo": "Tiempo",
                 "entrega": "Entrega",
@@ -1043,7 +1250,7 @@ class PizzeriaApp(tk.Tk):
         frame_estaciones, tabla_estaciones = self._crear_tabla(
             body_estaciones,
             columnas_estaciones,
-            {"estacion": "Estacion", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
+            {"estacion": "Estación", "pendientes": "Pend.", "en_preparacion": "Prep.", "listos": "Listos"},
             {"estacion": 170, "pendientes": 70, "en_preparacion": 70, "listos": 70},
             alto=6,
         )
@@ -1071,13 +1278,22 @@ class PizzeriaApp(tk.Tk):
         self._limpiar_contenido()
         self._refrescar_caja()
 
-        seccion, cuerpo = self._crear_seccion(self.content, "Inventario", "Ingredientes, costos y alertas de reposicion")
+        seccion, cuerpo = self._crear_seccion(self.content, "Inventario", "Ingredientes, costos y alertas de reposición")
         seccion.pack(fill="both", expand=True)
 
         barra = tk.Frame(cuerpo, bg=self.colors["surface"])
         barra.pack(fill="x", pady=(0, 12))
-        self._boton_accion(barra, "Reponer stock", self.abrir_dialogo_reponer_stock, "exito").pack(side="left", padx=(0, 10))
-        self._boton_accion(barra, "Generar reporte", self.generar_reportes, "secundario").pack(side="left")
+        if self._es_administrador():
+            self._boton_accion(barra, "Reponer stock", self.abrir_dialogo_reponer_stock, "exito").pack(side="left", padx=(0, 10))
+            self._boton_accion(barra, "Generar reporte", self.generar_reportes, "secundario").pack(side="left")
+        else:
+            tk.Label(
+                barra,
+                text="Modo empleado: consulta de stock disponible",
+                bg=self.colors["surface"],
+                fg=self.colors["muted"],
+                font=("Segoe UI", 10, "bold"),
+            ).pack(side="left")
 
         columnas = ("ingrediente", "cantidad", "precio_unitario", "valor_total_stock", "estado")
         frame_tabla, tabla = self._crear_tabla(
@@ -1104,14 +1320,18 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla, columnas, self._filas_stock(), lambda fila: "bajo" if fila["estado"] == "Reponer" else "")
 
     def mostrar_reportes(self):
+        if not self._requiere_admin("ver reportes e historial de ventas"):
+            self.mostrar_panel()
+            return
+
         self.current_view = "reportes"
         self._seleccionar_nav("reportes")
         self.page_title.set("Reportes")
-        self.page_subtitle.set("Exportacion y lectura de archivos Excel")
+        self.page_subtitle.set("Gráficos simples, ventas y stock")
         self._limpiar_contenido()
         self._refrescar_caja()
 
-        seccion, cuerpo = self._crear_seccion(self.content, "Reportes Excel", "Ventas y stock del negocio")
+        seccion, cuerpo = self._crear_seccion(self.content, "Reportes y gráficos", "Indicadores visuales, ventas y stock del negocio")
         seccion.pack(fill="both", expand=True)
 
         barra = tk.Frame(cuerpo, bg=self.colors["surface"])
@@ -1121,8 +1341,132 @@ class PizzeriaApp(tk.Tk):
 
         notebook = ttk.Notebook(cuerpo)
         notebook.pack(fill="both", expand=True)
+        self._agregar_tab_graficos(notebook)
         self._agregar_tab_reporte(notebook, "Ventas", "reporte_ventas.xlsx")
         self._agregar_tab_reporte(notebook, "Stock", "reporte_stock.xlsx")
+
+    def _agregar_tab_graficos(self, notebook):
+        tab = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab, text="Gráficos")
+        tab.grid_columnconfigure(0, weight=1)
+        tab.grid_columnconfigure(1, weight=1)
+        tab.grid_rowconfigure(0, weight=1)
+        tab.grid_rowconfigure(1, weight=1)
+
+        graficos = [
+            ("Pedidos por estado", self._datos_grafico_estados(), self.colors["info"], 0, 0),
+            ("Ventas por producto", self._datos_grafico_productos(), self.colors["accent"], 0, 1),
+            ("Stock mas bajo", self._datos_grafico_stock_bajo(), self.colors["danger"], 1, 0),
+            ("Descuentos por promocion", self._datos_grafico_descuentos(), self.colors["success"], 1, 1),
+        ]
+
+        for titulo, datos, color, fila, columna in graficos:
+            seccion, cuerpo = self._crear_seccion(tab, titulo)
+            seccion.grid(row=fila, column=columna, sticky="nsew", padx=(0 if columna == 0 else 10, 0), pady=(0 if fila == 0 else 10, 0))
+            self._dibujar_grafico_barras(cuerpo, datos, color)
+
+    def _datos_grafico_estados(self):
+        estados = self._resumen_estados()
+        return [
+            ("Pend.", estados["pendiente"]),
+            ("Prep.", estados["en preparacion"]),
+            ("Listos", estados["listo"]),
+            ("Camino", estados["en camino"]),
+            ("Entreg.", estados["entregado"]),
+            ("Cancel.", estados["cancelado"]),
+        ]
+
+    def _datos_grafico_productos(self):
+        ventas_por_producto = {}
+        for venta in self.pizzeria.obtener_ventas():
+            producto = str(venta.get("producto", "")).strip()
+            if not producto:
+                continue
+            ventas_por_producto[producto] = ventas_por_producto.get(producto, 0) + float(venta.get("subtotal", 0) or 0)
+
+        datos = sorted(ventas_por_producto.items(), key=lambda item: item[1], reverse=True)
+        return datos[:6]
+
+    def _datos_grafico_stock_bajo(self):
+        filas = []
+        for item in self.pizzeria.inventario.obtener_stock_detallado():
+            filas.append((capitalizar_visible(item["ingrediente"]), float(item["cantidad"])))
+        filas.sort(key=lambda item: item[1])
+        return filas[:6]
+
+    def _datos_grafico_descuentos(self):
+        total_descuento = 0
+        for venta in self.pizzeria.obtener_ventas():
+            total_descuento += float(venta.get("descuento", 0) or 0)
+        return [("Promos", total_descuento)] if total_descuento else []
+
+    def _dibujar_grafico_barras(self, parent, datos, color):
+        canvas = tk.Canvas(parent, bg=self.colors["surface"], highlightthickness=0, height=210)
+        canvas.pack(fill="both", expand=True)
+
+        def dibujar(_evento=None):
+            canvas.delete("all")
+            ancho = max(canvas.winfo_width(), 260)
+            alto = max(canvas.winfo_height(), 190)
+
+            if not datos:
+                canvas.create_text(
+                    ancho / 2,
+                    alto / 2,
+                    text="Sin datos disponibles",
+                    fill=self.colors["muted"],
+                    font=("Segoe UI", 11, "bold"),
+                )
+                return
+
+            margen_izq = 44
+            margen_der = 20
+            margen_arriba = 18
+            margen_abajo = 48
+            area_ancho = ancho - margen_izq - margen_der
+            area_alto = alto - margen_arriba - margen_abajo
+            maximo = max(valor for _etiqueta, valor in datos) or 1
+            separacion = 10
+            ancho_barra = max(24, (area_ancho - separacion * (len(datos) - 1)) / len(datos))
+
+            canvas.create_line(
+                margen_izq,
+                margen_arriba + area_alto,
+                ancho - margen_der,
+                margen_arriba + area_alto,
+                fill=self.colors["line"],
+            )
+
+            for indice, (etiqueta, valor) in enumerate(datos):
+                x0 = margen_izq + indice * (ancho_barra + separacion)
+                x1 = x0 + ancho_barra
+                altura = 0 if maximo == 0 else (valor / maximo) * area_alto
+                y0 = margen_arriba + area_alto - altura
+                y1 = margen_arriba + area_alto
+                canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="")
+
+                valor_visible = formato_moneda(valor) if valor >= 1000 else formato_numero(valor)
+                canvas.create_text(
+                    (x0 + x1) / 2,
+                    max(y0 - 10, 10),
+                    text=valor_visible,
+                    fill=self.colors["text"],
+                    font=("Segoe UI", 8, "bold"),
+                )
+                etiqueta_visible = str(etiqueta)
+                if len(etiqueta_visible) > 13:
+                    etiqueta_visible = etiqueta_visible[:12] + "."
+                canvas.create_text(
+                    (x0 + x1) / 2,
+                    y1 + 18,
+                    text=etiqueta_visible,
+                    fill=self.colors["muted"],
+                    font=("Segoe UI", 8),
+                    width=ancho_barra + 18,
+                )
+
+        canvas.bind("<Configure>", dibujar)
+        self.after(120, dibujar)
 
     def _agregar_tab_reporte(self, notebook, titulo, archivo):
         tab = tk.Frame(notebook, bg=self.colors["surface"])
@@ -1142,7 +1486,7 @@ class PizzeriaApp(tk.Tk):
         if not filas:
             tk.Label(
                 tab,
-                text="El reporte esta vacio.",
+                text="El reporte está vacío.",
                 bg=self.colors["surface"],
                 fg=self.colors["muted"],
                 font=("Segoe UI", 11),
@@ -1158,7 +1502,12 @@ class PizzeriaApp(tk.Tk):
             fila_formateada = {}
             for columna, valor in fila.items():
                 columna_normalizada = columna.lower()
-                if "total" in columna_normalizada or "precio" in columna_normalizada:
+                if (
+                    "total" in columna_normalizada
+                    or "precio" in columna_normalizada
+                    or "subtotal" in columna_normalizada
+                    or "descuento" in columna_normalizada
+                ):
                     fila_formateada[columna] = formato_moneda(valor)
                 else:
                     fila_formateada[columna] = valor
@@ -1166,6 +1515,10 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla, columnas, filas_formateadas)
 
     def mostrar_herramientas(self):
+        if not self._requiere_admin("abrir herramientas administrativas"):
+            self.mostrar_panel()
+            return
+
         self.current_view = "herramientas"
         self._seleccionar_nav("herramientas")
         self.page_title.set("Herramientas")
@@ -1183,12 +1536,16 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(body_respaldos, "Guardar respaldo", self.guardar_respaldo, "principal").pack(fill="x", pady=(0, 10))
         self._boton_accion(body_respaldos, "Cargar respaldo", self.cargar_respaldo, "secundario").pack(fill="x")
 
-        seccion_proveedor, body_proveedor = self._crear_seccion(contenedor, "Proveedor externo", "Consulta de cotizacion")
+        seccion_proveedor, body_proveedor = self._crear_seccion(contenedor, "Proveedor externo", "Consulta de cotización")
         seccion_proveedor.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
-        self._boton_accion(body_proveedor, "Consultar dolar oficial", self.consultar_proveedor, "info").pack(fill="x")
+        self._boton_accion(body_proveedor, "Consultar dólar oficial", self.consultar_proveedor, "info").pack(fill="x")
 
-        seccion_estado, body_estado = self._crear_seccion(contenedor, "Estado actual", "Datos rapidos del sistema")
-        seccion_estado.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(20, 0))
+        seccion_usuarios, body_usuarios = self._crear_seccion(contenedor, "Usuarios", "Cambiar claves de administrador y empleado")
+        seccion_usuarios.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(20, 0))
+        self._boton_accion(body_usuarios, "Gestionar contraseñas", self.abrir_dialogo_contrasenias, "principal").pack(fill="x")
+
+        seccion_estado, body_estado = self._crear_seccion(contenedor, "Estado actual", "Datos rápidos del sistema")
+        seccion_estado.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(20, 0))
         estados = self._resumen_estados()
         datos = [
             ("Pedidos pendientes", estados["pendiente"]),
@@ -1204,6 +1561,71 @@ class PizzeriaApp(tk.Tk):
             fila.pack(fill="x", pady=4)
             tk.Label(fila, text=texto, bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(side="left")
             tk.Label(fila, text=str(valor), bg=self.colors["surface"], fg=self.colors["text"], font=("Segoe UI", 10, "bold")).pack(side="right")
+
+    def abrir_dialogo_contrasenias(self):
+        if not self._requiere_admin("cambiar contraseñas"):
+            return
+
+        ventana = tk.Toplevel(self)
+        ventana.title("Usuarios")
+        ventana.geometry("460x330")
+        ventana.resizable(False, False)
+        ventana.configure(bg=self.colors["bg"])
+        ventana.transient(self)
+        ventana.grab_set()
+
+        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        marco.pack(fill="both", expand=True, padx=22, pady=22)
+        tk.Label(
+            marco,
+            text="Gestionar contraseñas",
+            bg=self.colors["surface"],
+            fg=self.colors["text"],
+            font=("Segoe UI", 17, "bold"),
+        ).pack(anchor="w", padx=18, pady=(18, 4))
+        tk.Label(
+            marco,
+            text="El cambio queda guardado para los próximos inicios de sesión.",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 9),
+        ).pack(anchor="w", padx=18, pady=(0, 16))
+
+        formulario = tk.Frame(marco, bg=self.colors["surface"])
+        formulario.pack(fill="x", padx=18)
+        formulario.grid_columnconfigure(0, weight=1)
+
+        usuario = tk.StringVar(value="administrador")
+        nueva = tk.StringVar()
+        repetir = tk.StringVar()
+
+        tk.Label(formulario, text="Usuario", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Combobox(formulario, textvariable=usuario, values=("administrador", "empleado"), state="readonly").grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        tk.Label(formulario, text="Nueva contraseña", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", pady=(0, 6))
+        ttk.Entry(formulario, textvariable=nueva, show="*").grid(row=3, column=0, sticky="ew", pady=(0, 12))
+        tk.Label(formulario, text="Repetir contraseña", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=4, column=0, sticky="w", pady=(0, 6))
+        ttk.Entry(formulario, textvariable=repetir, show="*").grid(row=5, column=0, sticky="ew")
+
+        pie = tk.Frame(marco, bg=self.colors["surface"])
+        pie.pack(fill="x", padx=18, pady=(18, 18))
+        self._boton_accion(pie, "Cancelar", ventana.destroy, "secundario").pack(side="right", padx=(10, 0))
+
+        def guardar():
+            if nueva.get() != repetir.get():
+                messagebox.showerror("Contraseñas", "Las contraseñas no coinciden.", parent=ventana)
+                return
+
+            try:
+                cambiar_contrasenia(usuario.get(), nueva.get())
+            except ValueError as error:
+                messagebox.showerror("Contraseñas", str(error), parent=ventana)
+                return
+
+            self._set_status(f"Contraseña actualizada para {usuario.get()}.")
+            messagebox.showinfo("Contraseñas", "La contraseña fue actualizada correctamente.", parent=ventana)
+            ventana.destroy()
+
+        self._boton_accion(pie, "Guardar cambio", guardar, "principal").pack(side="right")
 
     def abrir_dialogo_pedido(self):
         ventana = tk.Toplevel(self)
@@ -1239,7 +1661,7 @@ class PizzeriaApp(tk.Tk):
         ttk.Entry(datos_cliente, textvariable=cliente).grid(row=0, column=1, sticky="ew", pady=12)
         tk.Label(datos_cliente, text="Entrega", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=2, sticky="w", padx=(14, 8), pady=12)
         ttk.Combobox(datos_cliente, textvariable=tipo_entrega, values=("Retiro", "Delivery"), state="readonly", width=12).grid(row=0, column=3, sticky="ew", pady=12)
-        tk.Label(datos_cliente, text="Direccion", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=4, sticky="w", padx=(14, 8), pady=12)
+        tk.Label(datos_cliente, text="Dirección", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=4, sticky="w", padx=(14, 8), pady=12)
         entrada_direccion = ttk.Entry(datos_cliente, textvariable=direccion)
         entrada_direccion.grid(row=0, column=5, sticky="ew", padx=(0, 14), pady=12)
 
@@ -1258,13 +1680,13 @@ class PizzeriaApp(tk.Tk):
         cuerpo.grid_columnconfigure(1, weight=2)
         cuerpo.grid_rowconfigure(0, weight=1)
 
-        seccion_catalogo, body_catalogo = self._crear_seccion(cuerpo, "Catalogo", "Selecciona productos y cantidades")
+        seccion_catalogo, body_catalogo = self._crear_seccion(cuerpo, "Catálogo", "Selecciona productos y cantidades")
         seccion_catalogo.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
         columnas_catalogo = ("numero", "producto", "categoria", "precio")
         frame_catalogo, tabla_catalogo = self._crear_tabla(
             body_catalogo,
             columnas_catalogo,
-            {"numero": "#", "producto": "Producto", "categoria": "Categoria", "precio": "Precio"},
+            {"numero": "#", "producto": "Producto", "categoria": "Categoría", "precio": "Precio"},
             {"numero": 60, "producto": 240, "categoria": 120, "precio": 110},
             alto=11,
         )
@@ -1289,7 +1711,34 @@ class PizzeriaApp(tk.Tk):
         )
         frame_carrito.pack(fill="both", expand=True)
 
+        promo_text = tk.StringVar(value="Sin promociones aplicadas.")
+        subtotal_text = tk.StringVar(value="Subtotal: $0.00")
+        descuento_text = tk.StringVar(value="Descuento: $0.00")
         total_text = tk.StringVar(value="Total: $0.00")
+        tk.Label(
+            body_carrito,
+            textvariable=promo_text,
+            bg=self.colors["surface"],
+            fg=self.colors["success"],
+            font=("Segoe UI", 9, "bold"),
+            anchor="e",
+        ).pack(fill="x", pady=(12, 0))
+        tk.Label(
+            body_carrito,
+            textvariable=subtotal_text,
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 10),
+            anchor="e",
+        ).pack(fill="x", pady=(8, 0))
+        tk.Label(
+            body_carrito,
+            textvariable=descuento_text,
+            bg=self.colors["surface"],
+            fg=self.colors["warning"],
+            font=("Segoe UI", 10, "bold"),
+            anchor="e",
+        ).pack(fill="x")
         tk.Label(
             body_carrito,
             textvariable=total_text,
@@ -1301,24 +1750,48 @@ class PizzeriaApp(tk.Tk):
 
         def renderizar_carrito():
             filas = []
-            total = 0
+            productos_carrito = []
+            for datos in carrito.values():
+                productos_carrito.append((datos["producto"], datos["cantidad"]))
+
+            promociones = calcular_promociones_pedido(productos_carrito)
+            porcentaje_empanadas = 0
+            for promocion in promociones:
+                if promocion["tipo"] == "empanadas":
+                    porcentaje_empanadas = promocion["porcentaje"]
+
+            subtotal_bruto = 0
+            descuento_total = 0
             for nombre, datos in carrito.items():
-                subtotal = datos["producto"].calcular_precio() * datos["cantidad"]
-                total += subtotal
+                producto = datos["producto"]
+                subtotal_linea = producto.calcular_precio() * datos["cantidad"]
+                descuento_linea = 0
+                if isinstance(producto, Empanada):
+                    descuento_linea = subtotal_linea * porcentaje_empanadas
+                subtotal_bruto += subtotal_linea
+                descuento_total += descuento_linea
                 filas.append(
                     {
                         "producto": nombre,
                         "cantidad": datos["cantidad"],
-                        "subtotal": formato_moneda(subtotal),
+                        "subtotal": formato_moneda(subtotal_linea - descuento_linea),
                     }
                 )
             self._llenar_tabla(tabla_carrito, columnas_carrito, filas)
+            total = subtotal_bruto - descuento_total
+            if promociones:
+                promocion = promociones[0]
+                promo_text.set(f"{promocion['nombre']}: {promocion['descripcion']}")
+            else:
+                promo_text.set("Sin promociones aplicadas.")
+            subtotal_text.set(f"Subtotal: {formato_moneda(subtotal_bruto)}")
+            descuento_text.set(f"Descuento: {formato_moneda(descuento_total)}")
             total_text.set(f"Total: {formato_moneda(total)}")
 
         def agregar_producto():
             seleccion = tabla_catalogo.selection()
             if not seleccion:
-                messagebox.showwarning("Producto requerido", "Selecciona un producto del catalogo.", parent=ventana)
+                messagebox.showwarning("Producto requerido", "Selecciona un producto del catálogo.", parent=ventana)
                 return
 
             try:
@@ -1326,7 +1799,7 @@ class PizzeriaApp(tk.Tk):
                 if cantidad_numero <= 0:
                     raise ValueError
             except ValueError:
-                messagebox.showerror("Cantidad invalida", "La cantidad debe ser un entero mayor que cero.", parent=ventana)
+                messagebox.showerror("Cantidad inválida", "La cantidad debe ser un entero mayor que cero.", parent=ventana)
                 return
 
             valores = tabla_catalogo.item(seleccion[0], "values")
@@ -1355,7 +1828,7 @@ class PizzeriaApp(tk.Tk):
 
         def confirmar():
             if not carrito:
-                messagebox.showwarning("Pedido vacio", "Agrega al menos un producto.", parent=ventana)
+                messagebox.showwarning("Pedido vacío", "Agrega al menos un producto.", parent=ventana)
                 return
 
             try:
@@ -1373,6 +1846,9 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Confirmar pedido", confirmar, "principal").pack(side="right")
 
     def abrir_dialogo_reponer_stock(self):
+        if not self._requiere_admin("reponer stock"):
+            return
+
         stock = self.pizzeria.inventario.obtener_stock_detallado()
         ingredientes = [fila["ingrediente"] for fila in stock]
         if not ingredientes:
@@ -1437,7 +1913,8 @@ class PizzeriaApp(tk.Tk):
     def _mostrar_ticket(self, pedido):
         ventana = tk.Toplevel(self)
         ventana.title(f"Ticket pedido #{pedido.pedido_id}")
-        ventana.geometry("460x420")
+        ventana.geometry("560x560")
+        ventana.minsize(520, 500)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
 
@@ -1447,30 +1924,66 @@ class PizzeriaApp(tk.Tk):
         tk.Label(marco, text=f"Cliente: {pedido.cliente}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
         tk.Label(marco, text=f"Entrega: {pedido.tipo_entrega}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
         if pedido.direccion:
-            tk.Label(marco, text=f"Direccion: {pedido.direccion}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
+            tk.Label(marco, text=f"Dirección: {pedido.direccion}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
         tk.Label(marco, text=f"Estado: {estado_visible(pedido.estado)}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16, pady=(0, 12))
 
-        columnas = ("producto", "cantidad", "subtotal")
+        columnas = ("producto", "cantidad", "unitario", "descuento", "subtotal")
         frame_tabla, tabla = self._crear_tabla(
             marco,
             columnas,
-            {"producto": "Producto", "cantidad": "Cant.", "subtotal": "Subtotal"},
-            {"producto": 220, "cantidad": 70, "subtotal": 120},
+            {
+                "producto": "Producto",
+                "cantidad": "Cant.",
+                "unitario": "Unit.",
+                "descuento": "Desc.",
+                "subtotal": "Total",
+            },
+            {"producto": 210, "cantidad": 60, "unitario": 95, "descuento": 95, "subtotal": 110},
             alto=7,
         )
         frame_tabla.pack(fill="both", expand=True, padx=16)
 
-        productos = {}
-        for producto, cantidad in pedido.productos:
-            productos.setdefault(producto.nombre, {"cantidad": 0, "subtotal": 0})
-            productos[producto.nombre]["cantidad"] += cantidad
-            productos[producto.nombre]["subtotal"] += producto.calcular_precio() * cantidad
-
         filas = []
-        for nombre, datos in productos.items():
-            filas.append({"producto": nombre, "cantidad": datos["cantidad"], "subtotal": formato_moneda(datos["subtotal"])})
+        for linea in pedido.iterar_lineas_detalle():
+            filas.append(
+                {
+                    "producto": linea["nombre"],
+                    "cantidad": linea["cantidad"],
+                    "unitario": formato_moneda(linea["precio_unitario"]),
+                    "descuento": formato_moneda(linea["descuento"]) if linea["descuento"] else "-",
+                    "subtotal": formato_moneda(linea["subtotal"]),
+                }
+            )
         self._llenar_tabla(tabla, columnas, filas)
 
+        promociones = pedido.obtener_promociones()
+        if promociones:
+            for promocion in promociones:
+                tk.Label(
+                    marco,
+                    text=f"{promocion['nombre']}: {promocion['descripcion']}",
+                    bg=self.colors["surface"],
+                    fg=self.colors["success"],
+                    font=("Segoe UI", 10, "bold"),
+                    anchor="e",
+                ).pack(fill="x", padx=16, pady=(10, 0))
+
+        tk.Label(
+            marco,
+            text=f"Subtotal: {formato_moneda(pedido.calcular_subtotal())}",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 10),
+            anchor="e",
+        ).pack(fill="x", padx=16, pady=(12, 0))
+        tk.Label(
+            marco,
+            text=f"Descuento: {formato_moneda(pedido.calcular_descuento_total())}",
+            bg=self.colors["surface"],
+            fg=self.colors["warning"],
+            font=("Segoe UI", 10, "bold"),
+            anchor="e",
+        ).pack(fill="x", padx=16)
         tk.Label(
             marco,
             text=f"Total: {formato_moneda(pedido.calcular_total())}",
@@ -1479,6 +1992,26 @@ class PizzeriaApp(tk.Tk):
             font=("Segoe UI", 15, "bold"),
             anchor="e",
         ).pack(fill="x", padx=16, pady=12)
+
+        pie = tk.Frame(marco, bg=self.colors["surface"])
+        pie.pack(fill="x", padx=16, pady=(0, 16))
+        self._boton_accion(pie, "Cerrar", ventana.destroy, "secundario").pack(side="right", padx=(10, 0))
+        self._boton_accion(pie, "Exportar PDF", lambda: self.exportar_ticket_pdf(pedido, ventana), "principal").pack(side="right")
+
+    def exportar_ticket_pdf(self, pedido, parent=None):
+        try:
+            ruta = generar_ticket_pdf(pedido)
+        except Exception as error:
+            messagebox.showerror("Ticket PDF", f"No se pudo generar el ticket:\n{error}", parent=parent or self)
+            return
+
+        self._set_status(f"Ticket PDF generado: {ruta}.")
+        messagebox.showinfo("Ticket PDF", f"Ticket generado en:\n{ruta}", parent=parent or self)
+
+    def exportar_ticket_desde_tabla(self, tabla):
+        pedido = self._pedido_desde_tabla(tabla)
+        if pedido is not None:
+            self.exportar_ticket_pdf(pedido)
 
     def _abrir_ticket_desde_tabla(self, tabla):
         pedido = self._pedido_desde_tabla(tabla, mostrar_error=False)
@@ -1514,7 +2047,7 @@ class PizzeriaApp(tk.Tk):
             messagebox.showerror("No se pudo avanzar", str(error))
             return
 
-        self._set_status(f"Pedido #{pedido.pedido_id} ahora esta {estado_visible(pedido.estado)}.")
+        self._set_status(f"Pedido #{pedido.pedido_id} ahora está {estado_visible(pedido.estado)}.")
         self._refrescar_vista_actual()
 
     def cancelar_pedido_desde_tabla(self, tabla):
@@ -1522,7 +2055,7 @@ class PizzeriaApp(tk.Tk):
         if pedido is None:
             return
 
-        if not messagebox.askyesno("Cancelar pedido", f"Cancelar el pedido #{pedido.pedido_id}?"):
+        if not messagebox.askyesno("Cancelar pedido", f"¿Cancelar el pedido #{pedido.pedido_id}?"):
             return
 
         try:
@@ -1593,6 +2126,9 @@ class PizzeriaApp(tk.Tk):
         )
 
     def guardar_respaldo(self):
+        if not self._requiere_admin("guardar respaldos"):
+            return
+
         datos = {
             "dinero": self.pizzeria.obtener_dinero(),
             "catalogo": self.pizzeria.catalogo_to_dict(),
@@ -1605,7 +2141,10 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Respaldo", f"Respaldo guardado en:\n{ruta}")
 
     def cargar_respaldo(self):
-        if not messagebox.askyesno("Cargar respaldo", "Esto reemplazara los datos actuales. Deseas continuar?"):
+        if not self._requiere_admin("cargar respaldos"):
+            return
+
+        if not messagebox.askyesno("Cargar respaldo", "Esto reemplazará los datos actuales. ¿Deseas continuar?"):
             return
 
         try:
@@ -1619,6 +2158,9 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Respaldo", "Guardado cargado correctamente.")
 
     def consultar_proveedor(self):
+        if not self._requiere_admin("consultar herramientas administrativas"):
+            return
+
         self._set_status("Consultando proveedor externo...")
 
         def worker():
@@ -1634,14 +2176,17 @@ class PizzeriaApp(tk.Tk):
 
     def _mostrar_dolar(self, valor, error):
         if error:
-            self._set_status(f"No se pudo consultar el dolar: {error}")
+            self._set_status(f"No se pudo consultar el dólar: {error}")
             messagebox.showerror("Proveedor externo", str(error))
             return
 
-        self._set_status(f"Dolar oficial de venta: {formato_moneda(valor)}.")
-        messagebox.showinfo("Proveedor externo", f"Dolar oficial de venta: {formato_moneda(valor)}")
+        self._set_status(f"Dólar oficial de venta: {formato_moneda(valor)}.")
+        messagebox.showinfo("Proveedor externo", f"Dólar oficial de venta: {formato_moneda(valor)}")
 
     def generar_reportes(self):
+        if not self._requiere_admin("generar reportes"):
+            return
+
         try:
             ruta_ventas = generar_reporte_ventas(self.pizzeria.obtener_ventas())
             ruta_stock = generar_reporte_stock(self.pizzeria.inventario.obtener_stock_detallado())
@@ -1667,11 +2212,12 @@ class PizzeriaApp(tk.Tk):
         vistas.get(self.current_view, self.mostrar_panel)()
 
     def _cerrar_aplicacion(self):
-        if messagebox.askyesno("Salir", "Deseas guardar un respaldo antes de salir?"):
+        if self._es_administrador() and messagebox.askyesno("Salir", "¿Deseas guardar un respaldo antes de salir?"):
             self.guardar_respaldo()
         self.destroy()
 
 
 def ejecutar_menu():
     app = PizzeriaApp()
-    app.mainloop()
+    if app.winfo_exists():
+        app.mainloop()

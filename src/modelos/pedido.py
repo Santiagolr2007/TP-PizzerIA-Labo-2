@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from src.modelos.producto import Empanada
+from src.servicios.promociones import calcular_promociones_pedido
 from src.utils.excepciones import EstadoPedidoError, PedidoInvalidoError, ProductoNoEncontradoError
 from src.utils.validaciones import validar_entero_positivo, validar_texto
 
@@ -46,11 +48,51 @@ class Pedido:
         cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
         self.productos.append((producto, cantidad_validada))
 
-    def calcular_total(self):
+    def calcular_subtotal(self):
         total = 0
         for producto, cantidad in self.productos:
             total += producto.calcular_precio() * cantidad
         return total
+
+    def obtener_promociones(self):
+        return calcular_promociones_pedido(self.productos)
+
+    def calcular_descuento_total(self):
+        descuento_total = 0
+        for promocion in self.obtener_promociones():
+            descuento_total += promocion["descuento"]
+        return descuento_total
+
+    def calcular_total(self):
+        total = self.calcular_subtotal() - self.calcular_descuento_total()
+        return max(0, total)
+
+    def _porcentaje_descuento_empanadas(self):
+        for promocion in self.obtener_promociones():
+            if promocion["tipo"] == "empanadas":
+                return promocion["porcentaje"]
+        return 0
+
+    def iterar_lineas_detalle(self):
+        porcentaje_empanadas = self._porcentaje_descuento_empanadas()
+
+        for producto, cantidad in self.productos:
+            precio_unitario = producto.calcular_precio()
+            subtotal_bruto = precio_unitario * cantidad
+            descuento = 0
+
+            if isinstance(producto, Empanada):
+                descuento = subtotal_bruto * porcentaje_empanadas
+
+            yield {
+                "producto": producto,
+                "nombre": producto.nombre,
+                "cantidad": cantidad,
+                "precio_unitario": precio_unitario,
+                "subtotal_bruto": subtotal_bruto,
+                "descuento": descuento,
+                "subtotal": subtotal_bruto - descuento,
+            }
 
     def obtener_ingredientes_totales(self):
         if not self.productos:
@@ -109,9 +151,7 @@ class Pedido:
 
     def generar_items_venta(self):
         items_venta = []
-        for producto, cantidad in self.productos:
-            precio_unitario = producto.calcular_precio()
-            subtotal = precio_unitario * cantidad
+        for linea in self.iterar_lineas_detalle():
             items_venta.append(
                 {
                     "pedido_id": self.pedido_id,
@@ -119,10 +159,12 @@ class Pedido:
                     "cliente": self.cliente,
                     "tipo_entrega": self.tipo_entrega,
                     "direccion": self.direccion,
-                    "producto": producto.nombre,
-                    "cantidad": cantidad,
-                    "precio_unitario": precio_unitario,
-                    "subtotal": subtotal,
+                    "producto": linea["nombre"],
+                    "cantidad": linea["cantidad"],
+                    "precio_unitario": linea["precio_unitario"],
+                    "subtotal_bruto": linea["subtotal_bruto"],
+                    "descuento": linea["descuento"],
+                    "subtotal": linea["subtotal"],
                 }
             )
 
@@ -176,6 +218,8 @@ class Pedido:
             "tipo_entrega": self.tipo_entrega,
             "direccion": self.direccion,
             "fecha": self.fecha.isoformat(),
+            "subtotal": self.calcular_subtotal(),
+            "descuento": self.calcular_descuento_total(),
             "total": self.calcular_total(),
             "cocinero_asignado": self.cocinero_asignado,
             "estacion_cocina": self.estacion_cocina,

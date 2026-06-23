@@ -106,7 +106,7 @@ def crear_sistema():
 
     pizzeria.registrar_producto(
         Pizza(
-            "Pizza jamon y morron",
+            "Pizza jamón y morrón",
             convertir_dolares_a_pesos(6.50),
             "grande",
             {
@@ -172,7 +172,7 @@ def crear_sistema():
 
     pizzeria.registrar_producto(
         Empanada(
-            "Empanada de jamon y queso",
+            "Empanada de jamón y queso",
             convertir_dolares_a_pesos(0.80),
             "jamon_queso"
         )

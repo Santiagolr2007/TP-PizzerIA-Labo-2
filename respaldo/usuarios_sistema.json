@@ -1,0 +1,12 @@
+{
+    "administrador": {
+        "nombre": "Administrador",
+        "rol": "Administrador",
+        "hash": "9656b51a10356fb68a599f266e216a7085116ecf414cd28ebed19bd2645fd2fc"
+    },
+    "empleado": {
+        "nombre": "Empleado",
+        "rol": "Empleado",
+        "hash": "1c53f9bee2f5ed409b45c6f8fe83438b4e0c5435573e80abffedf239c6265c5a"
+    }
+}

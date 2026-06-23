@@ -16,6 +16,8 @@ VENTAS_COLUMNAS = [
     "direccion",
     "productos",
     "cantidad_total_productos",
+    "subtotal_bruto_pedido",
+    "descuento_pedido",
     "total_vendido_pedido",
     "total_vendido_hasta_el_momento",
 ]
@@ -25,9 +27,11 @@ VENTAS_ENCABEZADOS = {
     "fecha": "Fecha",
     "cliente": "Cliente",
     "tipo_entrega": "Entrega",
-    "direccion": "Direccion",
+    "direccion": "Dirección",
     "productos": "Productos",
     "cantidad_total_productos": "Cant. total",
+    "subtotal_bruto_pedido": "Subtotal",
+    "descuento_pedido": "Descuento",
     "total_vendido_pedido": "Total pedido",
     "total_vendido_hasta_el_momento": "Total acumulado",
 }
@@ -54,6 +58,18 @@ def _encabezado_visible(encabezado):
     encabezados.update(VENTAS_ENCABEZADOS)
     encabezados.update(STOCK_ENCABEZADOS)
     return encabezados.get(encabezado, encabezado)
+
+
+def _nombre_ingrediente_visible(nombre):
+    ingredientes = {
+        "jamon": "jamón",
+        "morron": "morrón",
+        "jamon_queso": "jamón y queso",
+        "tapas_empanada": "tapas de empanada",
+    }
+    texto = str(nombre).strip()
+    texto = ingredientes.get(texto.lower(), texto.replace("_", " "))
+    return texto[0].upper() + texto[1:] if texto else ""
 
 
 def obtener_carpeta_reportes():
@@ -114,9 +130,17 @@ def transformar_ventas(ventas):
         cantidad = _convertir_entero(venta.get("cantidad"))
         precio_unitario = _convertir_numero(venta.get("precio_unitario"))
         subtotal = _convertir_numero(venta.get("subtotal"))
+        descuento = _convertir_numero(venta.get("descuento", 0))
+        subtotal_bruto = _convertir_numero(venta.get("subtotal_bruto"))
 
         if None in (pedido_id, fecha, cantidad, precio_unitario, subtotal):
             continue
+
+        if descuento is None:
+            descuento = 0
+
+        if subtotal_bruto is None:
+            subtotal_bruto = subtotal + descuento
 
         if not producto:
             continue
@@ -136,6 +160,8 @@ def transformar_ventas(ventas):
                 "producto": producto,
                 "cantidad": cantidad,
                 "precio_unitario": precio_unitario,
+                "subtotal_bruto": subtotal_bruto,
+                "descuento": descuento,
                 "subtotal": subtotal,
             }
         )
@@ -177,7 +203,7 @@ def transformar_stock(stock):
         estado = "Reponer" if cantidad <= 5 else "Disponible"
         filas.append(
             {
-                "ingrediente": ingrediente,
+                "ingrediente": _nombre_ingrediente_visible(ingrediente),
                 "cantidad": cantidad,
                 "precio_unitario": precio_unitario,
                 "valor_total_stock": valor_total,
@@ -207,9 +233,11 @@ def _agrupar_ventas_por_pedido(filas_ventas):
         productos = pedidos[pedido_id]["productos"]
         nombre_producto = venta["producto"]
         if nombre_producto not in productos:
-            productos[nombre_producto] = {"cantidad": 0, "subtotal": 0}
+            productos[nombre_producto] = {"cantidad": 0, "subtotal_bruto": 0, "descuento": 0, "subtotal": 0}
 
         productos[nombre_producto]["cantidad"] += venta["cantidad"]
+        productos[nombre_producto]["subtotal_bruto"] += venta["subtotal_bruto"]
+        productos[nombre_producto]["descuento"] += venta["descuento"]
         productos[nombre_producto]["subtotal"] += venta["subtotal"]
 
     return sorted(pedidos.values(), key=lambda pedido: (pedido["fecha"], pedido["pedido_id"]))
@@ -219,7 +247,7 @@ def armar_reporte_ventas(ventas):
     filas_ventas = transformar_ventas(ventas)
 
     if not filas_ventas:
-        return [{"mensaje": "Todavia no existen ventas registradas."}]
+        return [{"mensaje": "Todavía no existen ventas registradas."}]
 
     filas_reporte = []
     acumulado = 0
@@ -227,14 +255,19 @@ def armar_reporte_ventas(ventas):
     for pedido in _agrupar_ventas_por_pedido(filas_ventas):
         textos_productos = []
         cantidad_total = 0
+        subtotal_bruto_pedido = 0
+        descuento_pedido = 0
         total_pedido = 0
 
         for nombre_producto, datos in pedido["productos"].items():
             cantidad_total += datos["cantidad"]
+            subtotal_bruto_pedido += datos["subtotal_bruto"]
+            descuento_pedido += datos["descuento"]
             total_pedido += datos["subtotal"]
-            textos_productos.append(
-                f"{nombre_producto} x{datos['cantidad']} ({_formato_moneda(datos['subtotal'])})"
-            )
+            texto_producto = f"{nombre_producto} x{datos['cantidad']} ({_formato_moneda(datos['subtotal'])})"
+            if datos["descuento"]:
+                texto_producto += f" desc. {_formato_moneda(datos['descuento'])}"
+            textos_productos.append(texto_producto)
 
         acumulado += total_pedido
         filas_reporte.append(
@@ -246,6 +279,8 @@ def armar_reporte_ventas(ventas):
                 "direccion": pedido["direccion"],
                 "productos": ", ".join(textos_productos),
                 "cantidad_total_productos": cantidad_total,
+                "subtotal_bruto_pedido": subtotal_bruto_pedido,
+                "descuento_pedido": descuento_pedido,
                 "total_vendido_pedido": total_pedido,
                 "total_vendido_hasta_el_momento": acumulado,
             }
