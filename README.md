@@ -18,16 +18,29 @@ El proyecto utiliza estas dependencias externas:
 - `requests`: consulta de recursos externos, como la cotizacion del dolar.
 
 Para instalarlas:
+El proyecto integra varios temas de la materia, como programación orientada a objetos, herencia, encapsulamiento, excepciones, decoradores, archivos JSON, APIs con `requests`, reportes con `pandas`, concurrencia con hilos y organización modular del código.
 
-```bash
+## Instalación de dependencias
+El proyecto utiliza algunas librerías externas de Python, declaradas en el archivo requirements.txt.
+Las dependencias utilizadas son:
+
+**pandas**
+**openpyxl**
+**requests**
+**tabulate**
+
+* pandas: se utiliza para procesar datos y generar reportes de ventas y stock.
+* openpyxl: permite exportar los reportes a archivos Excel con extensión .xlsx.
+* requests: se utiliza para consultar recursos externos mediante internet, como una API de cotización del dólar.
+* tabulate: mostrar dataframe de manera mas estetica
+
+Para instalar todas las dependencias necesarias, se debe abrir una terminal en la carpeta principal del proyecto y ejecutar:
+
 python -m pip install -r requirements.txt
-```
 
 Para ejecutar la aplicacion:
 
-```bash
 python main.py
-```
 
 ## Temas aplicados
 
@@ -42,4 +55,5 @@ python main.py
 - Lock
 - Requests
 - Reportes Excel con openpyxl
+- Dataframes de Pandas y ETL
 - Persistencia en JSON
