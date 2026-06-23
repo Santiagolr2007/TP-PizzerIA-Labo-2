@@ -1,60 +1,73 @@
 {
-    "dinero": 55082.399999999994,
+    "dinero": 25416.0,
     "stock": {
-        "harina": 53,
-        "salsa": 61,
-        "mozzarella": 26,
-        "jamon": 64,
-        "morron": 66,
-        "cebolla": 30,
-        "tomate": 37,
-        "ajo": 67,
-        "roquefort": 45,
-        "aceitunas": 63,
-        "tapas_empanada": 48,
-        "carne": 50,
-        "jamon_queso": 38,
-        "pollo": 31,
-        "verdura": 49,
-        "humita": 55,
-        "gaseosa": 52,
-        "agua": 59
+        "harina": 63,
+        "salsa": 49,
+        "mozzarella": 45,
+        "jamon": 40,
+        "morron": 39,
+        "cebolla": 56,
+        "tomate": 55,
+        "ajo": 62,
+        "roquefort": 44,
+        "aceitunas": 65,
+        "tapas_empanada": 60,
+        "carne": 62,
+        "jamon_queso": 67,
+        "pollo": 55,
+        "verdura": 43,
+        "humita": 54,
+        "gaseosa": 49,
+        "agua": 38
     },
     "ventas": [
         {
             "pedido_id": 1,
-            "fecha": "2026-06-21T01:25:17.784327",
-            "cliente": "yo",
-            "producto": "Pizza roquefort",
-            "cantidad": 3,
-            "precio_unitario": 14107.8,
-            "subtotal": 42323.399999999994
+            "fecha": "2026-06-22T23:56:59.621248",
+            "cliente": "Santiago",
+            "producto": "Empanada de carne",
+            "cantidad": 5,
+            "precio_unitario": 800.0,
+            "subtotal": 4000.0
         },
         {
             "pedido_id": 1,
-            "fecha": "2026-06-21T01:25:17.784327",
-            "cliente": "yo",
-            "producto": "Empanada de humita",
-            "cantidad": 1,
-            "precio_unitario": 1111.0,
-            "subtotal": 1111.0
+            "fecha": "2026-06-22T23:56:59.621248",
+            "cliente": "Santiago",
+            "producto": "Empanada de pollo",
+            "cantidad": 5,
+            "precio_unitario": 800.0,
+            "subtotal": 4000.0
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-22T23:56:59.621248",
+            "cliente": "Santiago",
+            "producto": "Gaseosa",
+            "cantidad": 5,
+            "precio_unitario": 1700.0,
+            "subtotal": 8500.0
         }
     ],
     "pedidos": [
         {
             "pedido_id": 1,
-            "cliente": "yo",
+            "cliente": "Santiago",
             "estado": "entregado",
-            "fecha": "2026-06-21T01:25:17.784327",
-            "total": 43434.399999999994,
+            "fecha": "2026-06-22T23:56:59.621248",
+            "total": 16500.0,
             "productos": [
                 {
-                    "nombre": "Pizza roquefort",
-                    "cantidad": 3
+                    "nombre": "Empanada de carne",
+                    "cantidad": 5
                 },
                 {
-                    "nombre": "Empanada de humita",
-                    "cantidad": 1
+                    "nombre": "Empanada de pollo",
+                    "cantidad": 5
+                },
+                {
+                    "nombre": "Gaseosa",
+                    "cantidad": 5
                 }
             ]
         }
