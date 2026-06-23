@@ -1,18 +1,116 @@
 {
-    "dinero": 17217,
+    "dinero": 80756.0,
+    "catalogo": [
+        {
+            "nombre": "Pizza muzzarella",
+            "precio_base": 8149.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {}
+        },
+        {
+            "nombre": "Pizza jamon y morron",
+            "precio_base": 9631.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "jamon": 2,
+                "morron": 1
+            }
+        },
+        {
+            "nombre": "Pizza fugazzeta",
+            "precio_base": 8890.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "cebolla": 2
+            }
+        },
+        {
+            "nombre": "Pizza napolitana",
+            "precio_base": 9187.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "tomate": 2,
+                "ajo": 1
+            }
+        },
+        {
+            "nombre": "Pizza roquefort",
+            "precio_base": 10076.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "roquefort": 2
+            }
+        },
+        {
+            "nombre": "Pizza con aceitunas",
+            "precio_base": 8594.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "aceitunas": 1
+            }
+        },
+        {
+            "nombre": "Empanada de carne",
+            "precio_base": 1185.0,
+            "tipo": "Empanada",
+            "ingrediente_relleno": "carne"
+        },
+        {
+            "nombre": "Empanada de jamon y queso",
+            "precio_base": 1185.0,
+            "tipo": "Empanada",
+            "ingrediente_relleno": "jamon_queso"
+        },
+        {
+            "nombre": "Empanada de pollo",
+            "precio_base": 1185.0,
+            "tipo": "Empanada",
+            "ingrediente_relleno": "pollo"
+        },
+        {
+            "nombre": "Empanada de verdura",
+            "precio_base": 1111.0,
+            "tipo": "Empanada",
+            "ingrediente_relleno": "verdura"
+        },
+        {
+            "nombre": "Empanada de humita",
+            "precio_base": 1111.0,
+            "tipo": "Empanada",
+            "ingrediente_relleno": "humita"
+        },
+        {
+            "nombre": "Gaseosa",
+            "precio_base": 2519.0,
+            "tipo": "Bebida",
+            "ingrediente_stock": "gaseosa"
+        },
+        {
+            "nombre": "Agua",
+            "precio_base": 1481.0,
+            "tipo": "Bebida",
+            "ingrediente_stock": "agua"
+        }
+    ],
     "stock": {
-        "harina": 52,
-        "salsa": 44,
-        "mozzarella": 62,
+        "harina": 26,
+        "salsa": 18,
+        "mozzarella": 50,
         "jamon": 61,
         "morron": 54,
-        "cebolla": 41,
+        "cebolla": 21,
         "tomate": 54,
         "ajo": 34,
-        "roquefort": 30,
+        "roquefort": 54,
         "aceitunas": 50,
-        "tapas_empanada": 64,
-        "carne": 60,
+        "tapas_empanada": 19,
+        "carne": 15,
         "jamon_queso": 52,
         "pollo": 70,
         "verdura": 66,
@@ -20,6 +118,176 @@
         "gaseosa": 30,
         "agua": 40
     },
-    "ventas": [],
-    "pedidos": []
+    "ventas": [
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-23T04:06:11.346249",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Pizza muzzarella",
+            "cantidad": 4,
+            "precio_unitario": 11408.599999999999,
+            "subtotal": 45634.399999999994
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-23T04:06:11.346249",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de carne",
+            "cantidad": 4,
+            "precio_unitario": 1185.0,
+            "subtotal": 4740.0
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-23T04:06:11.346249",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Pizza roquefort",
+            "cantidad": 4,
+            "precio_unitario": 14106.4,
+            "subtotal": 56425.6
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-23T04:06:11.346249",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Agua",
+            "cantidad": 4,
+            "precio_unitario": 1481.0,
+            "subtotal": 5924.0
+        },
+        {
+            "pedido_id": 2,
+            "fecha": "2026-06-23T04:07:30.017347",
+            "cliente": "Manuel",
+            "tipo_entrega": "Delivery",
+            "direccion": "Alvear 2134",
+            "producto": "Empanada de carne",
+            "cantidad": 41,
+            "precio_unitario": 1185.0,
+            "subtotal": 48585.0
+        },
+        {
+            "pedido_id": 8,
+            "fecha": "2026-06-23T04:10:23.507538",
+            "cliente": "s",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Pizza fugazzeta",
+            "cantidad": 5,
+            "precio_unitario": 12446.0,
+            "subtotal": 62230.0
+        }
+    ],
+    "pedidos": [
+        {
+            "pedido_id": 1,
+            "cliente": "Santiago",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-23T04:06:11.346249",
+            "total": 112724.0,
+            "productos": [
+                {
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 4
+                },
+                {
+                    "nombre": "Empanada de carne",
+                    "cantidad": 4
+                },
+                {
+                    "nombre": "Pizza roquefort",
+                    "cantidad": 4
+                },
+                {
+                    "nombre": "Agua",
+                    "cantidad": 4
+                }
+            ]
+        },
+        {
+            "pedido_id": 2,
+            "cliente": "Manuel",
+            "estado": "entregado",
+            "tipo_entrega": "Delivery",
+            "direccion": "Alvear 2134",
+            "fecha": "2026-06-23T04:07:30.017347",
+            "total": 48585.0,
+            "productos": [
+                {
+                    "nombre": "Empanada de carne",
+                    "cantidad": 41
+                }
+            ]
+        },
+        {
+            "pedido_id": 4,
+            "cliente": "Pedro",
+            "estado": "cancelado",
+            "tipo_entrega": "Delivery",
+            "direccion": "Juan 12431",
+            "fecha": "2026-06-23T04:09:04.754510",
+            "total": 248920.0,
+            "productos": [
+                {
+                    "nombre": "Pizza fugazzeta",
+                    "cantidad": 20
+                }
+            ]
+        },
+        {
+            "pedido_id": 6,
+            "cliente": "a",
+            "estado": "cancelado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-23T04:09:53.930373",
+            "total": 124460.0,
+            "productos": [
+                {
+                    "nombre": "Pizza fugazzeta",
+                    "cantidad": 10
+                }
+            ]
+        },
+        {
+            "pedido_id": 8,
+            "cliente": "s",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-23T04:10:23.507538",
+            "total": 62230.0,
+            "productos": [
+                {
+                    "nombre": "Pizza fugazzeta",
+                    "cantidad": 5
+                }
+            ]
+        },
+        {
+            "pedido_id": 9,
+            "cliente": "f",
+            "estado": "cancelado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-23T04:10:54.794567",
+            "total": 62230.0,
+            "productos": [
+                {
+                    "nombre": "Pizza fugazzeta",
+                    "cantidad": 5
+                }
+            ]
+        }
+    ]
 }

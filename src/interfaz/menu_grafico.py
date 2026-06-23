@@ -1,6 +1,8 @@
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
+
+from src.modelos.producto import Bebida, Empanada, Pizza
 from src.servicios.cocina_threads import procesar_pedidos_con_hilos
 from src.servicios.inicializacion import crear_sistema
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
@@ -27,6 +29,17 @@ def formato_numero(valor):
         return str(int(numero))
 
     return f"{numero:.2f}"
+
+
+def leer_importe(texto):
+    valor = str(texto).strip().replace("$", "").replace(" ", "")
+    if "," in valor:
+        valor = valor.replace(".", "").replace(",", ".")
+    return float(valor)
+
+
+def estado_visible(estado):
+    return str(estado).replace("_", " ").capitalize()
 
 
 def obtener_resumen_productos(pedido):
@@ -376,11 +389,36 @@ class PizzeriaApp(tk.Tk):
             tabla.insert("", "end", values=valores, tags=tags)
 
     def _resumen_estados(self):
-        resumen = {"pendiente": 0, "entregado": 0, "cancelado": 0}
+        resumen = {
+            "pendiente": 0,
+            "en preparacion": 0,
+            "listo": 0,
+            "en camino": 0,
+            "entregado": 0,
+            "cancelado": 0,
+        }
         for pedido in self.pizzeria.obtener_pedidos():
             if pedido.estado in resumen:
                 resumen[pedido.estado] += 1
         return resumen
+
+    def _detalle_producto(self, producto):
+        if isinstance(producto, Pizza):
+            extras = []
+            for ingrediente, cantidad in producto.ingredientes_extra.items():
+                extras.append(f"{ingrediente} x{cantidad}")
+            detalle = f"Tamanio {producto.tamanio}"
+            if extras:
+                detalle += " | " + ", ".join(extras)
+            return detalle
+
+        if isinstance(producto, Empanada):
+            return f"Relleno: {producto.ingrediente_relleno}"
+
+        if isinstance(producto, Bebida):
+            return f"Stock asociado: {producto.ingrediente_stock or 'sin control'}"
+
+        return ""
 
     def _filas_catalogo(self, filtro=""):
         filtro = filtro.lower().strip()
@@ -390,9 +428,11 @@ class PizzeriaApp(tk.Tk):
                 "numero": numero,
                 "producto": producto.nombre,
                 "categoria": producto.__class__.__name__,
+                "detalle": self._detalle_producto(producto),
                 "precio": formato_moneda(producto.calcular_precio()),
             }
-            if filtro and filtro not in fila["producto"].lower() and filtro not in fila["categoria"].lower():
+            texto_busqueda = f"{fila['producto']} {fila['categoria']} {fila['detalle']}".lower()
+            if filtro and filtro not in texto_busqueda:
                 continue
             filas.append(fila)
         return filas
@@ -404,7 +444,9 @@ class PizzeriaApp(tk.Tk):
                 {
                     "pedido_id": pedido.pedido_id,
                     "cliente": pedido.cliente,
-                    "estado": pedido.estado,
+                    "entrega": pedido.tipo_entrega,
+                    "direccion": pedido.direccion or "-",
+                    "estado": estado_visible(pedido.estado),
                     "productos": obtener_resumen_productos(pedido),
                     "total": formato_moneda(pedido.calcular_total()),
                 }
@@ -476,8 +518,8 @@ class PizzeriaApp(tk.Tk):
         datos_metricas = [
             ("Pedidos", len(pedidos), "Total cargado", self.colors["info"]),
             ("Pendientes", estados["pendiente"], "Para cocina", self.colors["accent"]),
-            ("Ventas", formato_moneda(self._total_ventas()), "Ingresos registrados", self.colors["success"]),
-            ("Stock bajo", self._stock_bajo(), "Ingredientes criticos", self.colors["danger"]),
+            ("Listos", estados["listo"], "Para entregar", self.colors["success"]),
+            ("Delivery", estados["en camino"], "En camino", self.colors["warning"]),
         ]
 
         for columna, (titulo, valor, detalle, color) in enumerate(datos_metricas):
@@ -492,12 +534,12 @@ class PizzeriaApp(tk.Tk):
 
         seccion_pedidos, body_pedidos = self._crear_seccion(cuerpo, "Pedidos recientes", "Ultimos movimientos del mostrador")
         seccion_pedidos.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        columnas_pedidos = ("pedido_id", "cliente", "estado", "total")
+        columnas_pedidos = ("pedido_id", "cliente", "entrega", "estado", "total")
         frame_tabla, tabla = self._crear_tabla(
             body_pedidos,
             columnas_pedidos,
-            {"pedido_id": "ID", "cliente": "Cliente", "estado": "Estado", "total": "Total"},
-            {"pedido_id": 70, "cliente": 160, "estado": 120, "total": 120},
+            {"pedido_id": "ID", "cliente": "Cliente", "entrega": "Entrega", "estado": "Estado", "total": "Total"},
+            {"pedido_id": 70, "cliente": 150, "entrega": 100, "estado": 120, "total": 120},
             alto=9,
         )
         frame_tabla.pack(fill="both", expand=True)
@@ -570,23 +612,211 @@ class PizzeriaApp(tk.Tk):
         busqueda = tk.StringVar()
         entrada = ttk.Entry(barra, textvariable=busqueda)
         entrada.pack(side="left", fill="x", expand=True)
-        self._boton_accion(barra, "Nuevo pedido", self.abrir_dialogo_pedido, "principal").pack(side="left", padx=(10, 0))
+        self._boton_accion(barra, "Nuevo producto", lambda: self.abrir_dialogo_producto(), "principal").pack(side="left", padx=(10, 0))
+        self._boton_accion(barra, "Editar", lambda: self.editar_producto_desde_tabla(tabla), "secundario").pack(side="left", padx=(10, 0))
+        self._boton_accion(barra, "Eliminar", lambda: self.eliminar_producto_desde_tabla(tabla), "peligro").pack(side="left", padx=(10, 0))
+        self._boton_accion(barra, "Nuevo pedido", self.abrir_dialogo_pedido, "info").pack(side="left", padx=(10, 0))
 
-        columnas = ("numero", "producto", "categoria", "precio")
+        columnas = ("numero", "producto", "categoria", "detalle", "precio")
         frame_tabla, tabla = self._crear_tabla(
             cuerpo,
             columnas,
-            {"numero": "#", "producto": "Producto", "categoria": "Categoria", "precio": "Precio"},
-            {"numero": 60, "producto": 280, "categoria": 160, "precio": 120},
+            {"numero": "#", "producto": "Producto", "categoria": "Categoria", "detalle": "Detalle", "precio": "Precio"},
+            {"numero": 60, "producto": 240, "categoria": 130, "detalle": 280, "precio": 120},
             alto=16,
         )
         frame_tabla.pack(fill="both", expand=True)
+        tabla.bind("<Double-1>", lambda _evento: self.editar_producto_desde_tabla(tabla))
 
         def renderizar(_evento=None):
             self._llenar_tabla(tabla, columnas, self._filas_catalogo(busqueda.get()))
 
         entrada.bind("<KeyRelease>", renderizar)
         renderizar()
+
+    def _producto_desde_tabla_catalogo(self, tabla):
+        seleccion = tabla.selection()
+        if not seleccion:
+            messagebox.showwarning("Producto requerido", "Selecciona un producto del catalogo.")
+            return None
+
+        valores = tabla.item(seleccion[0], "values")
+        if len(valores) < 2:
+            return None
+
+        try:
+            return self.pizzeria.obtener_producto(valores[1])
+        except (PizzeriaError, ValueError) as error:
+            messagebox.showerror("Producto", str(error))
+            return None
+
+    def editar_producto_desde_tabla(self, tabla):
+        producto = self._producto_desde_tabla_catalogo(tabla)
+        if producto is not None:
+            self.abrir_dialogo_producto(producto)
+
+    def eliminar_producto_desde_tabla(self, tabla):
+        producto = self._producto_desde_tabla_catalogo(tabla)
+        if producto is None:
+            return
+
+        if not messagebox.askyesno("Eliminar producto", f"Eliminar '{producto.nombre}' del catalogo?"):
+            return
+
+        try:
+            self.pizzeria.eliminar_producto(producto.nombre)
+        except (PizzeriaError, ValueError) as error:
+            messagebox.showerror("No se pudo eliminar", str(error))
+            return
+
+        self._set_status(f"Producto eliminado: {producto.nombre}.")
+        self.mostrar_catalogo()
+
+    def abrir_dialogo_producto(self, producto=None):
+        ventana = tk.Toplevel(self)
+        ventana.title("Editar producto" if producto else "Nuevo producto")
+        ventana.geometry("560x560")
+        ventana.minsize(520, 520)
+        ventana.configure(bg=self.colors["bg"])
+        ventana.transient(self)
+        ventana.grab_set()
+
+        categoria_inicial = producto.__class__.__name__ if producto else "Pizza"
+        categoria = tk.StringVar(value=categoria_inicial)
+        nombre = tk.StringVar(value=producto.nombre if producto else "")
+        precio = tk.StringVar(value=str(producto.precio_base) if producto else "")
+        tamanio = tk.StringVar(value=getattr(producto, "tamanio", "grande"))
+        extras = tk.StringVar()
+        relleno = tk.StringVar(value=getattr(producto, "ingrediente_relleno", ""))
+        ingrediente_bebida = tk.StringVar(value=getattr(producto, "ingrediente_stock", "") or "")
+        nombre_original = producto.nombre if producto else None
+
+        if isinstance(producto, Pizza):
+            extras.set(", ".join(f"{ingrediente}:{cantidad}" for ingrediente, cantidad in producto.ingredientes_extra.items()))
+
+        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        marco.pack(fill="both", expand=True, padx=22, pady=22)
+
+        tk.Label(
+            marco,
+            text="Editar producto" if producto else "Nuevo producto",
+            bg=self.colors["surface"],
+            fg=self.colors["text"],
+            font=("Segoe UI", 17, "bold"),
+        ).pack(anchor="w", padx=18, pady=(18, 4))
+        tk.Label(
+            marco,
+            text="Los cambios se aplican al catalogo para nuevos pedidos.",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 9),
+        ).pack(anchor="w", padx=18, pady=(0, 14))
+
+        formulario = tk.Frame(marco, bg=self.colors["surface"])
+        formulario.pack(fill="x", padx=18)
+        formulario.grid_columnconfigure(0, weight=1)
+
+        def etiqueta(texto, fila):
+            tk.Label(
+                formulario,
+                text=texto,
+                bg=self.colors["surface"],
+                fg=self.colors["muted"],
+                font=("Segoe UI", 10, "bold"),
+            ).grid(row=fila, column=0, sticky="w", pady=(0, 6))
+
+        etiqueta("Categoria", 0)
+        combo_categoria = ttk.Combobox(formulario, textvariable=categoria, values=("Pizza", "Empanada", "Bebida"), state="readonly")
+        combo_categoria.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+
+        etiqueta("Nombre", 2)
+        ttk.Entry(formulario, textvariable=nombre).grid(row=3, column=0, sticky="ew", pady=(0, 12))
+
+        etiqueta("Precio base", 4)
+        ttk.Entry(formulario, textvariable=precio).grid(row=5, column=0, sticky="ew", pady=(0, 12))
+
+        campos_tipo = tk.Frame(formulario, bg=self.colors["surface"])
+        campos_tipo.grid(row=6, column=0, sticky="ew")
+        campos_tipo.grid_columnconfigure(0, weight=1)
+
+        frame_pizza = tk.Frame(campos_tipo, bg=self.colors["surface"])
+        frame_empanada = tk.Frame(campos_tipo, bg=self.colors["surface"])
+        frame_bebida = tk.Frame(campos_tipo, bg=self.colors["surface"])
+
+        tk.Label(frame_pizza, text="Tamanio", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        ttk.Combobox(frame_pizza, textvariable=tamanio, values=("chica", "mediana", "grande"), state="readonly").pack(fill="x", pady=(0, 12))
+        tk.Label(frame_pizza, text="Ingredientes extra", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        ttk.Entry(frame_pizza, textvariable=extras).pack(fill="x")
+        tk.Label(frame_pizza, text="Formato: jamon:2, morron:1", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 8)).pack(anchor="w", pady=(4, 0))
+
+        tk.Label(frame_empanada, text="Ingrediente de relleno", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        ttk.Entry(frame_empanada, textvariable=relleno).pack(fill="x")
+
+        tk.Label(frame_bebida, text="Ingrediente de stock asociado", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 6))
+        ttk.Entry(frame_bebida, textvariable=ingrediente_bebida).pack(fill="x")
+
+        def mostrar_campos_tipo(_evento=None):
+            for frame in (frame_pizza, frame_empanada, frame_bebida):
+                frame.pack_forget()
+
+            if categoria.get() == "Pizza":
+                frame_pizza.pack(fill="x")
+            elif categoria.get() == "Empanada":
+                frame_empanada.pack(fill="x")
+            else:
+                frame_bebida.pack(fill="x")
+
+        def parsear_extras():
+            resultado = {}
+            texto = extras.get().strip()
+            if not texto:
+                return resultado
+
+            for parte in texto.split(","):
+                if ":" not in parte:
+                    raise ValueError("Los extras deben tener formato ingrediente:cantidad.")
+                ingrediente, cantidad_texto = parte.split(":", 1)
+                ingrediente = ingrediente.strip().lower()
+                cantidad = int(cantidad_texto.strip())
+                if not ingrediente or cantidad <= 0:
+                    raise ValueError("Cada ingrediente extra debe tener una cantidad mayor que cero.")
+                resultado[ingrediente] = cantidad
+
+            return resultado
+
+        def construir_producto():
+            precio_base = leer_importe(precio.get())
+            tipo = categoria.get()
+
+            if tipo == "Pizza":
+                return Pizza(nombre.get(), precio_base, tamanio.get(), parsear_extras())
+
+            if tipo == "Empanada":
+                return Empanada(nombre.get(), precio_base, relleno.get())
+
+            ingrediente = ingrediente_bebida.get().strip() or None
+            return Bebida(nombre.get(), precio_base, ingrediente)
+
+        combo_categoria.bind("<<ComboboxSelected>>", mostrar_campos_tipo)
+        mostrar_campos_tipo()
+
+        pie = tk.Frame(marco, bg=self.colors["surface"])
+        pie.pack(fill="x", padx=18, pady=(18, 18))
+        self._boton_accion(pie, "Cancelar", ventana.destroy, "secundario").pack(side="right", padx=(10, 0))
+
+        def guardar():
+            try:
+                nuevo_producto = construir_producto()
+                self.pizzeria.guardar_producto(nuevo_producto, nombre_original)
+            except (PizzeriaError, ValueError) as error:
+                messagebox.showerror("No se pudo guardar", str(error), parent=ventana)
+                return
+
+            ventana.destroy()
+            self._set_status(f"Producto guardado: {nuevo_producto.nombre}.")
+            self.mostrar_catalogo()
+
+        self._boton_accion(pie, "Guardar", guardar, "principal").pack(side="right")
 
     def mostrar_pedidos(self):
         self.current_view = "pedidos"
@@ -603,20 +833,24 @@ class PizzeriaApp(tk.Tk):
         barra.pack(fill="x", pady=(0, 12))
         self._boton_accion(barra, "Nuevo pedido", self.abrir_dialogo_pedido, "principal").pack(side="left", padx=(0, 10))
         self._boton_accion(barra, "Procesar cocina", self.procesar_cocina, "info").pack(side="left", padx=(0, 10))
+        self._boton_accion(barra, "Avanzar estado", lambda: self.avanzar_pedido_desde_tabla(tabla), "exito").pack(side="left", padx=(0, 10))
+        self._boton_accion(barra, "Cancelar pedido", lambda: self.cancelar_pedido_desde_tabla(tabla), "peligro").pack(side="left", padx=(0, 10))
         self._boton_accion(barra, "Actualizar", self.mostrar_pedidos, "secundario").pack(side="left")
 
-        columnas = ("pedido_id", "cliente", "estado", "productos", "total")
+        columnas = ("pedido_id", "cliente", "entrega", "direccion", "estado", "productos", "total")
         frame_tabla, tabla = self._crear_tabla(
             cuerpo,
             columnas,
             {
                 "pedido_id": "ID",
                 "cliente": "Cliente",
+                "entrega": "Entrega",
+                "direccion": "Direccion",
                 "estado": "Estado",
                 "productos": "Productos",
                 "total": "Total",
             },
-            {"pedido_id": 70, "cliente": 150, "estado": 120, "productos": 420, "total": 120},
+            {"pedido_id": 70, "cliente": 140, "entrega": 95, "direccion": 180, "estado": 120, "productos": 330, "total": 120},
             alto=16,
         )
         frame_tabla.pack(fill="both", expand=True)
@@ -626,12 +860,15 @@ class PizzeriaApp(tk.Tk):
 
     def _configurar_tags_pedidos(self, tabla):
         tabla.tag_configure("pendiente", foreground=self.colors["accent"])
+        tabla.tag_configure("en preparacion", foreground=self.colors["info"])
+        tabla.tag_configure("listo", foreground=self.colors["success"])
+        tabla.tag_configure("en camino", foreground=self.colors["warning"])
         tabla.tag_configure("entregado", foreground=self.colors["success"])
         tabla.tag_configure("cancelado", foreground=self.colors["danger"])
 
     def _tag_pedido(self, fila):
-        estado = fila.get("estado", "")
-        if estado in {"pendiente", "entregado", "cancelado"}:
+        estado = str(fila.get("estado", "")).lower()
+        if estado in {"pendiente", "en preparacion", "listo", "en camino", "entregado", "cancelado"}:
             return estado
         return ""
 
@@ -764,6 +1001,8 @@ class PizzeriaApp(tk.Tk):
         estados = self._resumen_estados()
         datos = [
             ("Pedidos pendientes", estados["pendiente"]),
+            ("Pedidos listos", estados["listo"]),
+            ("Delivery en camino", estados["en camino"]),
             ("Pedidos entregados", estados["entregado"]),
             ("Pedidos cancelados", estados["cancelado"]),
             ("Ventas registradas", len(self.pizzeria.obtener_ventas())),
@@ -778,8 +1017,8 @@ class PizzeriaApp(tk.Tk):
     def abrir_dialogo_pedido(self):
         ventana = tk.Toplevel(self)
         ventana.title("Nuevo pedido")
-        ventana.geometry("900x620")
-        ventana.minsize(820, 560)
+        ventana.geometry("940x680")
+        ventana.minsize(860, 620)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
@@ -787,6 +1026,8 @@ class PizzeriaApp(tk.Tk):
         carrito = {}
         cliente = tk.StringVar()
         cantidad = tk.StringVar(value="1")
+        tipo_entrega = tk.StringVar(value="Retiro")
+        direccion = tk.StringVar()
 
         encabezado = tk.Frame(ventana, bg=self.colors["bg"])
         encabezado.pack(fill="x", padx=22, pady=(18, 10))
@@ -800,8 +1041,25 @@ class PizzeriaApp(tk.Tk):
 
         datos_cliente = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         datos_cliente.pack(fill="x", padx=22, pady=(0, 12))
-        tk.Label(datos_cliente, text="Cliente", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).pack(side="left", padx=(14, 10), pady=12)
-        ttk.Entry(datos_cliente, textvariable=cliente).pack(side="left", fill="x", expand=True, padx=(0, 14), pady=12)
+        datos_cliente.grid_columnconfigure(1, weight=2)
+        datos_cliente.grid_columnconfigure(3, weight=1)
+        datos_cliente.grid_columnconfigure(5, weight=2)
+        tk.Label(datos_cliente, text="Cliente", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", padx=(14, 8), pady=12)
+        ttk.Entry(datos_cliente, textvariable=cliente).grid(row=0, column=1, sticky="ew", pady=12)
+        tk.Label(datos_cliente, text="Entrega", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=2, sticky="w", padx=(14, 8), pady=12)
+        ttk.Combobox(datos_cliente, textvariable=tipo_entrega, values=("Retiro", "Delivery"), state="readonly", width=12).grid(row=0, column=3, sticky="ew", pady=12)
+        tk.Label(datos_cliente, text="Direccion", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=0, column=4, sticky="w", padx=(14, 8), pady=12)
+        entrada_direccion = ttk.Entry(datos_cliente, textvariable=direccion)
+        entrada_direccion.grid(row=0, column=5, sticky="ew", padx=(0, 14), pady=12)
+
+        def actualizar_direccion(*_args):
+            estado = "normal" if tipo_entrega.get() == "Delivery" else "disabled"
+            entrada_direccion.configure(state=estado)
+            if estado == "disabled":
+                direccion.set("")
+
+        tipo_entrega.trace_add("write", actualizar_direccion)
+        actualizar_direccion()
 
         cuerpo = tk.Frame(ventana, bg=self.colors["bg"])
         cuerpo.pack(fill="both", expand=True, padx=22, pady=(0, 12))
@@ -880,8 +1138,12 @@ class PizzeriaApp(tk.Tk):
                 messagebox.showerror("Cantidad invalida", "La cantidad debe ser un entero mayor que cero.", parent=ventana)
                 return
 
-            indice = tabla_catalogo.index(seleccion[0])
-            producto = self.pizzeria.obtener_catalogo()[indice]
+            valores = tabla_catalogo.item(seleccion[0], "values")
+            try:
+                producto = self.pizzeria.obtener_producto(valores[1])
+            except (PizzeriaError, ValueError) as error:
+                messagebox.showerror("Producto", str(error), parent=ventana)
+                return
             if producto.nombre not in carrito:
                 carrito[producto.nombre] = {"producto": producto, "cantidad": 0}
             carrito[producto.nombre]["cantidad"] += cantidad_numero
@@ -907,7 +1169,7 @@ class PizzeriaApp(tk.Tk):
 
             try:
                 items = [[nombre, datos["cantidad"]] for nombre, datos in carrito.items()]
-                pedido = self.pizzeria.crear_pedido(cliente.get(), items)
+                pedido = self.pizzeria.crear_pedido(cliente.get(), items, tipo_entrega.get(), direccion.get())
             except (PizzeriaError, ValueError) as error:
                 messagebox.showerror("No se pudo crear el pedido", str(error), parent=ventana)
                 return
@@ -992,7 +1254,10 @@ class PizzeriaApp(tk.Tk):
         marco.pack(fill="both", expand=True, padx=22, pady=22)
         tk.Label(marco, text=f"Pedido #{pedido.pedido_id}", bg=self.colors["surface"], fg=self.colors["text"], font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=16, pady=(16, 2))
         tk.Label(marco, text=f"Cliente: {pedido.cliente}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
-        tk.Label(marco, text=f"Estado: {pedido.estado}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16, pady=(0, 12))
+        tk.Label(marco, text=f"Entrega: {pedido.tipo_entrega}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
+        if pedido.direccion:
+            tk.Label(marco, text=f"Direccion: {pedido.direccion}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
+        tk.Label(marco, text=f"Estado: {estado_visible(pedido.estado)}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16, pady=(0, 12))
 
         columnas = ("producto", "cantidad", "subtotal")
         frame_tabla, tabla = self._crear_tabla(
@@ -1025,23 +1290,58 @@ class PizzeriaApp(tk.Tk):
         ).pack(fill="x", padx=16, pady=12)
 
     def _abrir_ticket_desde_tabla(self, tabla):
+        pedido = self._pedido_desde_tabla(tabla, mostrar_error=False)
+        if pedido is not None:
+            self._mostrar_ticket(pedido)
+
+    def _pedido_desde_tabla(self, tabla, mostrar_error=True):
         seleccion = tabla.selection()
         if not seleccion:
-            return
+            if mostrar_error:
+                messagebox.showwarning("Pedido requerido", "Selecciona un pedido.")
+            return None
 
         valores = tabla.item(seleccion[0], "values")
         if not valores:
+            return None
+
+        try:
+            return self.pizzeria.obtener_pedido_por_id(int(valores[0]))
+        except (PizzeriaError, ValueError) as error:
+            if mostrar_error:
+                messagebox.showerror("Pedido", str(error))
+            return None
+
+    def avanzar_pedido_desde_tabla(self, tabla):
+        pedido = self._pedido_desde_tabla(tabla)
+        if pedido is None:
             return
 
         try:
-            pedido_id = int(valores[0])
-        except (TypeError, ValueError):
+            pedido = self.pizzeria.avanzar_pedido(pedido.pedido_id)
+        except (PizzeriaError, ValueError) as error:
+            messagebox.showerror("No se pudo avanzar", str(error))
             return
 
-        for pedido in self.pizzeria.obtener_pedidos():
-            if pedido.pedido_id == pedido_id:
-                self._mostrar_ticket(pedido)
-                return
+        self._set_status(f"Pedido #{pedido.pedido_id} ahora esta {estado_visible(pedido.estado)}.")
+        self._refrescar_vista_actual()
+
+    def cancelar_pedido_desde_tabla(self, tabla):
+        pedido = self._pedido_desde_tabla(tabla)
+        if pedido is None:
+            return
+
+        if not messagebox.askyesno("Cancelar pedido", f"Cancelar el pedido #{pedido.pedido_id}?"):
+            return
+
+        try:
+            pedido = self.pizzeria.cancelar_pedido(pedido.pedido_id)
+        except (PizzeriaError, ValueError) as error:
+            messagebox.showerror("No se pudo cancelar", str(error))
+            return
+
+        self._set_status(f"Pedido #{pedido.pedido_id} cancelado.")
+        self._refrescar_vista_actual()
 
     def procesar_cocina(self):
         if self.busy:
@@ -1073,18 +1373,19 @@ class PizzeriaApp(tk.Tk):
             messagebox.showerror("Cocina", str(error))
             return
 
-        entregados = despues["entregado"] - antes["entregado"]
+        listos = despues["listo"] - antes["listo"]
         cancelados = despues["cancelado"] - antes["cancelado"]
-        self._set_status(f"Cocina procesada: {entregados} entregados, {cancelados} cancelados.")
+        self._set_status(f"Cocina procesada: {listos} listos, {cancelados} cancelados.")
         self._refrescar_vista_actual()
         messagebox.showinfo(
             "Cocina procesada",
-            f"Pedidos procesados: {antes['pendiente']}\nEntregados: {entregados}\nCancelados: {cancelados}",
+            f"Pedidos procesados: {antes['pendiente']}\nListos: {listos}\nCancelados: {cancelados}",
         )
 
     def guardar_respaldo(self):
         datos = {
             "dinero": self.pizzeria.obtener_dinero(),
+            "catalogo": self.pizzeria.catalogo_to_dict(),
             "stock": self.pizzeria.inventario.obtener_stock(),
             "ventas": self.pizzeria.obtener_ventas(),
             "pedidos": [pedido.to_dict() for pedido in self.pizzeria.obtener_pedidos()],

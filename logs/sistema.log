@@ -33,3 +33,27 @@
 [2026-06-23 03:37:41] OK - consultar_dolar_oficial
 [2026-06-23 03:37:41] OK - consultar_dolar_oficial
 [2026-06-23 03:37:49] OK - cargar_datos
+[2026-06-23 04:03:52] OK - consultar_dolar_oficial
+[2026-06-23 04:04:59] OK - generar_reporte_ventas
+[2026-06-23 04:04:59] OK - generar_reporte_stock
+[2026-06-23 04:05:28] OK - consultar_dolar_oficial
+[2026-06-23 04:05:33] OK - cargar_datos
+[2026-06-23 04:06:11] OK - crear_pedido
+[2026-06-23 04:06:52] OK - _cocinero
+[2026-06-23 04:07:30] OK - crear_pedido
+[2026-06-23 04:07:43] OK - registrar_venta
+[2026-06-23 04:07:48] OK - _cocinero
+[2026-06-23 04:07:55] OK - registrar_venta
+[2026-06-23 04:08:52] ERROR - crear_pedido: El campo 'cliente' no puede estar vacío.
+[2026-06-23 04:09:04] OK - crear_pedido
+[2026-06-23 04:09:14] OK - _cocinero
+[2026-06-23 04:09:50] ERROR - crear_pedido: El campo 'cliente' no puede estar vacío.
+[2026-06-23 04:09:53] OK - crear_pedido
+[2026-06-23 04:09:59] OK - _cocinero
+[2026-06-23 04:09:59] OK - _cocinero
+[2026-06-23 04:10:20] ERROR - crear_pedido: El campo 'cliente' no puede estar vacío.
+[2026-06-23 04:10:23] OK - crear_pedido
+[2026-06-23 04:10:26] OK - _cocinero
+[2026-06-23 04:10:30] OK - registrar_venta
+[2026-06-23 04:10:54] OK - crear_pedido
+[2026-06-23 04:10:57] OK - _cocinero

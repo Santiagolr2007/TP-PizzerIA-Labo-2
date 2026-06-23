@@ -1,6 +1,7 @@
-import time
 import queue
 import threading
+import time
+
 from src.utils.decoradores import medir_tiempo, registrar_log
 
 
@@ -13,18 +14,18 @@ def _cocinero(nombre, cola_pedidos, pizzeria):
             if pedido is None:
                 return
 
-            print(f"{nombre} comenzó el pedido #{pedido.pedido_id}.")
-            pedido.cambiar_estado("en preparación")
+            print(f"{nombre} comenzo el pedido #{pedido.pedido_id}.")
+            pedido.cambiar_estado("en preparacion")
             time.sleep(1)
             ingredientes = pedido.obtener_ingredientes_totales()
             pizzeria.inventario.descontar(ingredientes)
-            pedido.cambiar_estado("entregado")
-            pizzeria.registrar_venta(pedido)
-            print(f"{nombre} terminó el pedido #{pedido.pedido_id}.")
+            pedido.cambiar_estado("listo")
+            print(f"{nombre} dejo listo el pedido #{pedido.pedido_id}.")
 
         except Exception as error:
             try:
-                if pedido is not None and pedido.estado in {"pendiente","en preparación",}:pedido.cambiar_estado("cancelado")
+                if pedido is not None and pedido.estado in {"pendiente", "en preparacion"}:
+                    pedido.cambiar_estado("cancelado")
             except Exception:
                 pass
 
@@ -46,9 +47,11 @@ def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2):
     hilos = []
 
     for numero in range(cantidad_cocineros):
-        hilo = threading.Thread(target=_cocinero,args=(f"Cocinero {numero + 1}", cola_pedidos, pizzeria),daemon=False,)
-        #daemon=false para que no para que no cierre el hilo
-
+        hilo = threading.Thread(
+            target=_cocinero,
+            args=(f"Cocinero {numero + 1}", cola_pedidos, pizzeria),
+            daemon=False,
+        )
         hilo.start()
         hilos.append(hilo)
 
@@ -57,7 +60,7 @@ def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2):
 
     cola_pedidos.join()
 
-    for _ in hilos:
+    for _hilo in hilos:
         cola_pedidos.put(None)
 
     cola_pedidos.join()

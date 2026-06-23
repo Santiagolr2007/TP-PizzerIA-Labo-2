@@ -12,6 +12,8 @@ VENTAS_COLUMNAS = [
     "pedido_id",
     "fecha",
     "cliente",
+    "tipo_entrega",
+    "direccion",
     "productos",
     "cantidad_total_productos",
     "total_vendido_pedido",
@@ -22,6 +24,8 @@ VENTAS_ENCABEZADOS = {
     "pedido_id": "ID",
     "fecha": "Fecha",
     "cliente": "Cliente",
+    "tipo_entrega": "Entrega",
+    "direccion": "Direccion",
     "productos": "Productos",
     "cantidad_total_productos": "Cant. total",
     "total_vendido_pedido": "Total pedido",
@@ -104,6 +108,8 @@ def transformar_ventas(ventas):
         pedido_id = _convertir_entero(venta.get("pedido_id"))
         fecha = _convertir_fecha(venta.get("fecha"))
         cliente = str(venta.get("cliente", "")).strip()
+        tipo_entrega = str(venta.get("tipo_entrega", "Retiro")).strip() or "Retiro"
+        direccion = str(venta.get("direccion", "")).strip()
         producto = str(venta.get("producto", "")).strip()
         cantidad = _convertir_entero(venta.get("cantidad"))
         precio_unitario = _convertir_numero(venta.get("precio_unitario"))
@@ -125,6 +131,8 @@ def transformar_ventas(ventas):
                 "pedido_id": pedido_id,
                 "fecha": fecha,
                 "cliente": cliente,
+                "tipo_entrega": tipo_entrega,
+                "direccion": direccion,
                 "producto": producto,
                 "cantidad": cantidad,
                 "precio_unitario": precio_unitario,
@@ -191,6 +199,8 @@ def _agrupar_ventas_por_pedido(filas_ventas):
                 "pedido_id": pedido_id,
                 "fecha": venta["fecha"],
                 "cliente": venta["cliente"],
+                "tipo_entrega": venta["tipo_entrega"],
+                "direccion": venta["direccion"],
                 "productos": {},
             }
 
@@ -232,6 +242,8 @@ def armar_reporte_ventas(ventas):
                 "pedido_id": pedido["pedido_id"],
                 "fecha": pedido["fecha"],
                 "cliente": pedido["cliente"],
+                "tipo_entrega": pedido["tipo_entrega"],
+                "direccion": pedido["direccion"],
                 "productos": ", ".join(textos_productos),
                 "cantidad_total_productos": cantidad_total,
                 "total_vendido_pedido": total_pedido,
