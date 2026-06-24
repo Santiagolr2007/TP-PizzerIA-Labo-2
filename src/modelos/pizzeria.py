@@ -174,6 +174,8 @@ class Pizzeria:
     def avanzar_pedido(self, pedido_id):
         pedido = self.obtener_pedido_por_id(pedido_id)
 
+        # Retiro se entrega al estar listo; delivery primero pasa a "en camino".
+        # Solo cuando llega a "entregado" se registra la venta.
         if pedido.estado == "listo":
             nuevo_estado = "en camino" if pedido.tipo_entrega == "Delivery" else "entregado"
         elif pedido.estado == "en camino":
@@ -194,6 +196,7 @@ class Pizzeria:
 
     @registrar_log
     def registrar_venta(self, pedido):
+        # El candado evita duplicados si dos acciones intentan registrar el mismo pedido.
         with self.__candado_ventas:
             if self._venta_registrada(pedido.pedido_id):
                 return False
@@ -203,6 +206,19 @@ class Pizzeria:
 
         self.sumar_dinero(pedido.calcular_total())
         return True
+
+    def sincronizar_ventas_entregadas(self):
+        # Repara casos donde un pedido ya figura como entregado, pero aun no existe
+        # en la lista de ventas que usan reportes, caja y respaldos.
+        ventas_agregadas = 0
+
+        for pedido in self.__pedidos:
+            if pedido.estado != "entregado":
+                continue
+            if self.registrar_venta(pedido):
+                ventas_agregadas += 1
+
+        return ventas_agregadas
 
     def _venta_registrada(self, pedido_id):
         for venta in self.__ventas:

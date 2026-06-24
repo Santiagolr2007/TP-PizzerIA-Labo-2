@@ -14,7 +14,7 @@ Los reportes se generan con `openpyxl` usando listas y diccionarios nativos de P
 
 ## Usuarios iniciales
 
-- Administrador: `administrador` / `admin123`
+- Administrador: `administrador` / `PizzerIA`
 - Empleado: `empleado` / `empleado123`
 
 El administrador puede usar todo el sistema y cambiar ambas contraseñas desde Herramientas. El empleado puede cargar pedidos, procesar cocina, avanzar pedidos, ver stock y generar comprobantes PDF, pero no puede reponer stock, administrar catálogo, ver reportes/historial de ventas ni modificar respaldos.
@@ -46,5 +46,5 @@ python main.py
 - Requests
 - Reportes Excel con openpyxl
 - Comprobantes PDF con reportlab
-- Generadores con `yield`
-- Persistencia en JSON
+- Generadores con yield
+- Persistencia en JSON  

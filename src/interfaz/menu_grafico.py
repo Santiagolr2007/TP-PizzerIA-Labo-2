@@ -8,9 +8,9 @@ from src.servicios.cocina_threads import (
     determinar_estaciones_pedido,
     procesar_pedidos_con_hilos,
 )
-from src.servicios.inicializacion import crear_sistema
+from src.servicios.inicializacion import crear_sistema, obtener_dolar_referencia
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
-from src.servicios.promociones import calcular_promociones_pedido
+from src.servicios.promociones import calcular_descuentos_por_linea, calcular_promociones_pedido
 from src.servicios.reportes_excel import (generar_reporte_stock,generar_reporte_ventas,leer_reporte_excel,)
 from src.servicios.tickets_pdf import generar_ticket_pdf
 from src.servicios.usuarios import cambiar_contrasenia, validar_usuario
@@ -149,10 +149,12 @@ class PizzeriaApp(tk.Tk):
         self.page_subtitle = tk.StringVar(value="Resumen general del negocio")
         self.money_label_text = tk.StringVar(value="Caja disponible")
         self.money_text = tk.StringVar()
+        self.dolar_text = tk.StringVar(value="Consultando...")
         self.status_text = tk.StringVar(value="Sistema iniciado correctamente.")
 
         self._configurar_estilos()
         self._crear_layout()
+        self._refrescar_dolar_referencia()
         self._mostrar_login()
         if self.usuario_actual is None:
             return
@@ -236,6 +238,8 @@ class PizzeriaApp(tk.Tk):
         ventana.resizable(True, True)
 
     def _crear_contenido_scrollable(self, ventana):
+        # Tkinter no permite scrollear frames directamente, por eso se usa un Canvas
+        # que contiene el frame real y ajusta su ancho al redimensionar la ventana.
         contenedor = tk.Frame(ventana, bg=self.colors["bg"])
         contenedor.pack(fill="both", expand=True)
         contenedor.grid_columnconfigure(0, weight=1)
@@ -370,6 +374,23 @@ class PizzeriaApp(tk.Tk):
             font=("Segoe UI", 15, "bold"),
         ).pack(anchor="e", padx=18, pady=(0, 9))
 
+        dolar = tk.Frame(barra, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        dolar.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
+        tk.Label(
+            dolar,
+            text="Dólar oficial",
+            bg=self.colors["surface"],
+            fg=self.colors["muted"],
+            font=("Segoe UI", 9),
+        ).pack(anchor="e", padx=18, pady=(9, 0))
+        tk.Label(
+            dolar,
+            textvariable=self.dolar_text,
+            bg=self.colors["surface"],
+            fg=self.colors["info"],
+            font=("Segoe UI", 15, "bold"),
+        ).pack(anchor="e", padx=18, pady=(0, 9))
+
         self.content = tk.Frame(self.main, bg=self.colors["bg"])
         self.content.grid(row=1, column=0, sticky="nsew", padx=28, pady=(0, 14))
         self.content.grid_columnconfigure(0, weight=1)
@@ -429,6 +450,10 @@ class PizzeriaApp(tk.Tk):
         self.money_label_text.set("Usuario activo")
         rol = self.usuario_actual.get("rol", "Empleado") if self.usuario_actual else "Empleado"
         self.money_text.set(rol)
+
+    def _refrescar_dolar_referencia(self):
+        valor = obtener_dolar_referencia()
+        self.dolar_text.set(formato_moneda(valor))
 
     def _set_status(self, texto):
         self.status_text.set(texto)
@@ -500,16 +525,6 @@ class PizzeriaApp(tk.Tk):
         tk.Label(formulario, text="Contraseña", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", pady=(0, 6))
         entrada_clave = ttk.Entry(formulario, textvariable=contrasenia, show="*")
         entrada_clave.grid(row=3, column=0, sticky="ew", pady=(0, 14))
-
-        ayuda = tk.Label(
-            marco,
-            text="Usuarios iniciales: administrador/admin123 | empleado/empleado123",
-            bg=self.colors["surface"],
-            fg=self.colors["muted"],
-            font=("Segoe UI", 8),
-            wraplength=360,
-        )
-        ayuda.pack(anchor="w", padx=22, pady=(2, 0))
 
         def cerrar():
             self.usuario_actual = None
@@ -720,6 +735,8 @@ class PizzeriaApp(tk.Tk):
         return "-"
 
     def _filas_cocina(self):
+        # Cocina muestra pedidos activos: pendientes, en preparacion, listos y delivery en camino.
+        # Se excluyen entregados/cancelados porque ya no necesitan trabajo operativo.
         filas = []
         estados_cocina = {"pendiente", "en preparacion", "listo", "en camino"}
 
@@ -736,6 +753,7 @@ class PizzeriaApp(tk.Tk):
                     "cocinero": pedido.cocinero_asignado or "-",
                     "tiempo": self._tiempo_pedido_visible(pedido),
                     "entrega": pedido.tipo_entrega,
+                    "direccion": pedido.direccion or "-",
                 }
             )
 
@@ -793,6 +811,7 @@ class PizzeriaApp(tk.Tk):
         return filas
 
     def _total_ventas(self):
+        self._sincronizar_ventas_entregadas()
         total = 0
         for venta in self.pizzeria.obtener_ventas():
             try:
@@ -800,6 +819,20 @@ class PizzeriaApp(tk.Tk):
             except (TypeError, ValueError):
                 pass
         return total
+
+    def _sincronizar_ventas_entregadas(self, notificar=False):
+        # Antes de reportar o respaldar, completa ventas faltantes desde pedidos entregados.
+        ventas_agregadas = self.pizzeria.sincronizar_ventas_entregadas()
+        if ventas_agregadas and notificar:
+            self._set_status(f"Ventas sincronizadas: {ventas_agregadas} pedidos entregados agregados.")
+        return ventas_agregadas
+
+    def _generar_archivos_reportes(self):
+        # Punto unico de generacion: mantiene Excel y vista de reportes con los mismos datos.
+        self._sincronizar_ventas_entregadas()
+        ruta_ventas = generar_reporte_ventas(self.pizzeria.obtener_ventas())
+        ruta_stock = generar_reporte_stock(self.pizzeria.inventario.obtener_stock_detallado())
+        return ruta_ventas, ruta_stock
 
     def _stock_bajo(self):
         cantidad = 0
@@ -869,7 +902,7 @@ class PizzeriaApp(tk.Tk):
 
         seccion_cocina, body_cocina = self._crear_seccion(cuerpo, "Cocina en vivo", "Cocineros, estaciones y tiempo estimado")
         seccion_cocina.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=(0, 10))
-        columnas_cocina = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega")
+        columnas_cocina = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega", "direccion")
         frame_cocina, tabla_cocina = self._crear_tabla(
             body_cocina,
             columnas_cocina,
@@ -881,8 +914,9 @@ class PizzeriaApp(tk.Tk):
                 "cocinero": "Cocinero",
                 "tiempo": "Tiempo",
                 "entrega": "Entrega",
+                "direccion": "Dirección",
             },
-            {"pedido_id": 55, "cliente": 130, "estado": 120, "estacion": 160, "cocinero": 120, "tiempo": 95, "entrega": 90},
+            {"pedido_id": 55, "cliente": 120, "estado": 115, "estacion": 140, "cocinero": 110, "tiempo": 80, "entrega": 85, "direccion": 160},
             alto=7,
         )
         frame_cocina.pack(fill="both", expand=True)
@@ -1256,6 +1290,10 @@ class PizzeriaApp(tk.Tk):
 
     def _tag_pedido(self, fila):
         estado = str(fila.get("estado", "")).lower()
+        estado = {
+            "en preparación": "en preparacion",
+            "en preparaciÃ³n": "en preparacion",
+        }.get(estado, estado)
         if estado in {"pendiente", "en preparacion", "listo", "en camino", "entregado", "cancelado"}:
             return estado
         return ""
@@ -1282,7 +1320,7 @@ class PizzeriaApp(tk.Tk):
 
         seccion_cola, body_cola = self._crear_seccion(contenedor, "Cola de cocina", "Pedidos pendientes, en preparación y listos")
         seccion_cola.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
-        columnas_cola = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega")
+        columnas_cola = ("pedido_id", "cliente", "estado", "estacion", "cocinero", "tiempo", "entrega", "direccion")
         frame_cola, tabla_cola = self._crear_tabla(
             body_cola,
             columnas_cola,
@@ -1294,8 +1332,9 @@ class PizzeriaApp(tk.Tk):
                 "cocinero": "Cocinero",
                 "tiempo": "Tiempo",
                 "entrega": "Entrega",
+                "direccion": "Dirección",
             },
-            {"pedido_id": 60, "cliente": 140, "estado": 120, "estacion": 170, "cocinero": 130, "tiempo": 100, "entrega": 100},
+            {"pedido_id": 60, "cliente": 130, "estado": 115, "estacion": 150, "cocinero": 120, "tiempo": 90, "entrega": 95, "direccion": 190},
             alto=15,
         )
         frame_cola.pack(fill="both", expand=True)
@@ -1395,6 +1434,11 @@ class PizzeriaApp(tk.Tk):
         self.page_subtitle.set("Gráficos simples, ventas y stock")
         self._limpiar_contenido()
         self._refrescar_caja()
+        try:
+            # La pestaña lee archivos Excel, por eso primero los regeneramos.
+            self._generar_archivos_reportes()
+        except Exception as error:
+            self._set_status(f"No se pudieron actualizar los reportes: {error}")
 
         seccion, cuerpo = self._crear_seccion(self.content, "Reportes y gráficos", "Indicadores visuales, ventas y stock del negocio")
         seccion.pack(fill="both", expand=True)
@@ -1813,25 +1857,23 @@ class PizzeriaApp(tk.Tk):
         ).pack(fill="x", pady=(12, 0))
 
         def renderizar_carrito():
+            # Recalcula tabla, promociones y totales cada vez que cambia el carrito.
+            # Usa el mismo motor de promociones que despues usan Pedido, ticket y Excel.
             filas = []
+            lineas_carrito = list(carrito.items())
             productos_carrito = []
-            for datos in carrito.values():
+            for _nombre, datos in lineas_carrito:
                 productos_carrito.append((datos["producto"], datos["cantidad"]))
 
             promociones = calcular_promociones_pedido(productos_carrito)
-            porcentaje_empanadas = 0
-            for promocion in promociones:
-                if promocion["tipo"] == "empanadas":
-                    porcentaje_empanadas = promocion["porcentaje"]
+            descuentos_por_linea = calcular_descuentos_por_linea(productos_carrito)
 
             subtotal_bruto = 0
             descuento_total = 0
-            for nombre, datos in carrito.items():
+            for indice, (nombre, datos) in enumerate(lineas_carrito):
                 producto = datos["producto"]
                 subtotal_linea = producto.calcular_precio() * datos["cantidad"]
-                descuento_linea = 0
-                if isinstance(producto, Empanada):
-                    descuento_linea = subtotal_linea * porcentaje_empanadas
+                descuento_linea = descuentos_por_linea.get(indice, 0)
                 subtotal_bruto += subtotal_linea
                 descuento_total += descuento_linea
                 filas.append(
@@ -1844,8 +1886,10 @@ class PizzeriaApp(tk.Tk):
             self._llenar_tabla(tabla_carrito, columnas_carrito, filas)
             total = subtotal_bruto - descuento_total
             if promociones:
-                promocion = promociones[0]
-                promo_text.set(f"{promocion['nombre']}: {promocion['descripcion']}")
+                textos_promos = []
+                for promocion in promociones:
+                    textos_promos.append(f"{promocion['nombre']} ({formato_moneda(promocion['descuento'])})")
+                promo_text.set(" | ".join(textos_promos))
             else:
                 promo_text.set("Sin promociones aplicadas.")
             subtotal_text.set(f"Subtotal: {formato_moneda(subtotal_bruto)}")
@@ -2193,6 +2237,7 @@ class PizzeriaApp(tk.Tk):
         if not self._requiere_admin("guardar respaldos"):
             return
 
+        self._sincronizar_ventas_entregadas()
         datos = {
             "dinero": self.pizzeria.obtener_dinero(),
             "catalogo": self.pizzeria.catalogo_to_dict(),
@@ -2228,6 +2273,8 @@ class PizzeriaApp(tk.Tk):
         self._set_status("Consultando proveedor externo...")
 
         def worker():
+            # La consulta externa va en un hilo para que la interfaz no se congele.
+            # self.after devuelve el resultado al hilo principal de Tkinter.
             try:
                 from src.servicios.proveedores import consultar_dolar_oficial
 
@@ -2244,6 +2291,7 @@ class PizzeriaApp(tk.Tk):
             messagebox.showerror("Proveedor externo", str(error))
             return
 
+        self.dolar_text.set(formato_moneda(valor))
         self._set_status(f"Dólar oficial de venta: {formato_moneda(valor)}.")
         messagebox.showinfo("Proveedor externo", f"Dólar oficial de venta: {formato_moneda(valor)}")
 
@@ -2252,8 +2300,7 @@ class PizzeriaApp(tk.Tk):
             return
 
         try:
-            ruta_ventas = generar_reporte_ventas(self.pizzeria.obtener_ventas())
-            ruta_stock = generar_reporte_stock(self.pizzeria.inventario.obtener_stock_detallado())
+            ruta_ventas, ruta_stock = self._generar_archivos_reportes()
         except Exception as error:
             messagebox.showerror("Reportes", f"No se pudieron generar los reportes:\n{error}")
             return

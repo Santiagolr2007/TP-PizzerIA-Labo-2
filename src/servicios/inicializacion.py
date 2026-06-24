@@ -16,8 +16,10 @@ def obtener_dolar_referencia():
     try:
         from src.servicios.proveedores import consultar_dolar_oficial
 
+        # Se consulta una sola vez al iniciar; despues se reutiliza para no repetir requests.
         _DOLAR_REFERENCIA = consultar_dolar_oficial()
     except Exception:
+        # Si la API falla, el sistema sigue funcionando con un valor de respaldo.
         _DOLAR_REFERENCIA = _DOLAR_RESPALDO
 
     return _DOLAR_REFERENCIA

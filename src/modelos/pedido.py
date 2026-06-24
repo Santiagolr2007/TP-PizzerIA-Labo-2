@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from src.modelos.producto import Empanada
-from src.servicios.promociones import calcular_promociones_pedido
+from src.servicios.promociones import calcular_descuentos_por_linea, calcular_promociones_pedido
 from src.utils.excepciones import EstadoPedidoError, PedidoInvalidoError, ProductoNoEncontradoError
 from src.utils.validaciones import validar_entero_positivo, validar_texto
 
@@ -67,22 +66,15 @@ class Pedido:
         total = self.calcular_subtotal() - self.calcular_descuento_total()
         return max(0, total)
 
-    def _porcentaje_descuento_empanadas(self):
-        for promocion in self.obtener_promociones():
-            if promocion["tipo"] == "empanadas":
-                return promocion["porcentaje"]
-        return 0
-
     def iterar_lineas_detalle(self):
-        porcentaje_empanadas = self._porcentaje_descuento_empanadas()
+        # El detalle se calcula linea por linea para que ventas, tickets y reportes
+        # usen exactamente los mismos subtotales y descuentos.
+        descuentos_por_linea = calcular_descuentos_por_linea(self.productos)
 
-        for producto, cantidad in self.productos:
+        for indice, (producto, cantidad) in enumerate(self.productos):
             precio_unitario = producto.calcular_precio()
             subtotal_bruto = precio_unitario * cantidad
-            descuento = 0
-
-            if isinstance(producto, Empanada):
-                descuento = subtotal_bruto * porcentaje_empanadas
+            descuento = descuentos_por_linea.get(indice, 0)
 
             yield {
                 "producto": producto,
@@ -150,6 +142,8 @@ class Pedido:
         return equivalencias.get(texto, texto)
 
     def generar_items_venta(self):
+        # Convierte un pedido entregado en filas de venta independientes.
+        # Luego el reporte de Excel vuelve a agruparlas por pedido.
         items_venta = []
         for linea in self.iterar_lineas_detalle():
             items_venta.append(
