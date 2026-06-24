@@ -1,5 +1,5 @@
 {
-    "dinero": 16742,
+    "dinero": 15247,
     "catalogo": [
         {
             "nombre": "Pizza muzzarella",
@@ -99,24 +99,24 @@
         }
     ],
     "stock": {
-        "harina": 57,
-        "salsa": 59,
-        "mozzarella": 39,
-        "jamon": 67,
-        "morron": 36,
-        "cebolla": 57,
-        "tomate": 68,
-        "ajo": 34,
-        "roquefort": 68,
-        "aceitunas": 45,
-        "tapas_empanada": 46,
-        "carne": 48,
-        "jamon_queso": 30,
-        "pollo": 55,
-        "verdura": 39,
-        "humita": 43,
-        "gaseosa": 35,
-        "agua": 31
+        "harina": 35,
+        "salsa": 66,
+        "mozzarella": 64,
+        "jamon": 58,
+        "morron": 41,
+        "cebolla": 65,
+        "tomate": 34,
+        "ajo": 52,
+        "roquefort": 53,
+        "aceitunas": 54,
+        "tapas_empanada": 66,
+        "carne": 65,
+        "jamon_queso": 69,
+        "pollo": 46,
+        "verdura": 67,
+        "humita": 54,
+        "gaseosa": 53,
+        "agua": 45
     },
     "ventas": [],
     "pedidos": []

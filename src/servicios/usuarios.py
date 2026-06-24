@@ -1,4 +1,3 @@
-import hashlib
 import json
 from pathlib import Path
 
@@ -24,19 +23,32 @@ def obtener_ruta_usuarios():
     return carpeta_respaldo / "usuarios_sistema.json"
 
 
-def _hashear_contrasenia(usuario, contrasenia):
-    texto = f"{usuario}:{contrasenia}".encode("utf-8")
-    return hashlib.sha256(texto).hexdigest()
-
-
 def _crear_usuarios_iniciales():
     usuarios = {}
     for usuario, datos in USUARIOS_INICIALES.items():
         usuarios[usuario] = {
             "nombre": datos["nombre"],
             "rol": datos["rol"],
-            "hash": _hashear_contrasenia(usuario, datos["contrasenia"]),
+            "contrasenia": datos["contrasenia"],
         }
+    return usuarios
+
+
+def _asegurar_contrasenias_visibles(usuarios):
+    usuarios_base = _crear_usuarios_iniciales()
+
+    for usuario, datos_base in usuarios_base.items():
+        if usuario not in usuarios:
+            usuarios[usuario] = datos_base
+            continue
+
+        # Mantiene solo los datos que usa el login: nombre, rol y contrasenia.
+        usuarios[usuario] = {
+            "nombre": usuarios[usuario].get("nombre", datos_base["nombre"]),
+            "rol": usuarios[usuario].get("rol", datos_base["rol"]),
+            "contrasenia": usuarios[usuario].get("contrasenia", datos_base["contrasenia"]),
+        }
+
     return usuarios
 
 
@@ -52,12 +64,8 @@ def cargar_usuarios():
             usuarios = json.load(archivo)
     except (OSError, json.JSONDecodeError):
         usuarios = _crear_usuarios_iniciales()
-        guardar_usuarios(usuarios)
 
-    for usuario, datos in _crear_usuarios_iniciales().items():
-        if usuario not in usuarios:
-            usuarios[usuario] = datos
-
+    usuarios = _asegurar_contrasenias_visibles(usuarios)
     guardar_usuarios(usuarios)
     return usuarios
 
@@ -77,8 +85,7 @@ def validar_usuario(nombre_usuario, contrasenia):
     if usuario not in usuarios:
         raise ValueError("Usuario o contraseña incorrectos.")
 
-    hash_ingresado = _hashear_contrasenia(usuario, clave)
-    if hash_ingresado != usuarios[usuario].get("hash"):
+    if clave != usuarios[usuario].get("contrasenia"):
         raise ValueError("Usuario o contraseña incorrectos.")
 
     datos = usuarios[usuario]
@@ -99,6 +106,6 @@ def cambiar_contrasenia(usuario, nueva_contrasenia):
     if usuario_normalizado not in usuarios:
         raise ValueError("El usuario seleccionado no existe.")
 
-    usuarios[usuario_normalizado]["hash"] = _hashear_contrasenia(usuario_normalizado, nueva)
+    usuarios[usuario_normalizado]["contrasenia"] = nueva
     guardar_usuarios(usuarios)
     return usuarios[usuario_normalizado]

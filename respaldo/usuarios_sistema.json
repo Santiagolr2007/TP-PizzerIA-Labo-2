@@ -2,11 +2,11 @@
     "administrador": {
         "nombre": "Administrador",
         "rol": "Administrador",
-        "hash": "f7d94a44692f6175f4b0b615d8181242816fd25d2f471077c73bdc884957f1e6"
+        "contrasenia": "admin123"
     },
     "empleado": {
         "nombre": "Empleado",
         "rol": "Empleado",
-        "hash": "1c53f9bee2f5ed409b45c6f8fe83438b4e0c5435573e80abffedf239c6265c5a"
+        "contrasenia": "empleado123"
     }
 }
