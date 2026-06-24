@@ -158,11 +158,32 @@ class PizzeriaApp(tk.Tk):
             alto,
             min_ancho,
             min_alto,
-            margen=90,
+            margen=60,
         )
         ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
         ventana.minsize(min_ancho, min_alto)
         ventana.resizable(True, True)
+        ventana.after_idle(lambda ventana=ventana: self._ajustar_dialogo_a_contenido(ventana))
+
+    def _ajustar_dialogo_a_contenido(self, ventana, margen=60):
+        if not ventana.winfo_exists():
+            return
+
+        ventana.update_idletasks()
+        pantalla_ancho = ventana.winfo_screenwidth()
+        pantalla_alto = ventana.winfo_screenheight()
+        max_ancho = max(360, pantalla_ancho - margen)
+        max_alto = max(320, pantalla_alto - margen)
+        min_ancho, min_alto = ventana.minsize()
+        ancho_actual = max(ventana.winfo_width(), min_ancho)
+        alto_actual = max(ventana.winfo_height(), min_alto)
+        ancho_requerido = ventana.winfo_reqwidth() + 24
+        alto_requerido = ventana.winfo_reqheight() + 24
+        ancho_final = min(max(ancho_actual, ancho_requerido), max_ancho)
+        alto_final = min(max(alto_actual, alto_requerido), max_alto)
+        x = max(0, (pantalla_ancho - ancho_final) // 2)
+        y = max(0, (pantalla_alto - alto_final) // 2)
+        ventana.geometry(f"{ancho_final}x{alto_final}+{x}+{y}")
 
     def _crear_contenido_scrollable(self, ventana):
         # Tkinter no permite scrollear frames directamente, por eso se usa un Canvas
@@ -1449,6 +1470,7 @@ class PizzeriaApp(tk.Tk):
         ventana.transient(self)
         ventana.grab_set()
         self._configurar_dialogo(ventana, 980, 720, 760, 540)
+        contenido = self._crear_contenido_scrollable(ventana)
 
         carrito = {}
         cliente = tk.StringVar()
@@ -1456,7 +1478,7 @@ class PizzeriaApp(tk.Tk):
         tipo_entrega = tk.StringVar(value="Retiro")
         direccion = tk.StringVar()
 
-        encabezado = tk.Frame(ventana, bg=self.colors["bg"])
+        encabezado = tk.Frame(contenido, bg=self.colors["bg"])
         encabezado.pack(fill="x", padx=22, pady=(18, 10))
         tk.Label(
             encabezado,
@@ -1466,7 +1488,7 @@ class PizzeriaApp(tk.Tk):
             font=("Segoe UI", 18, "bold"),
         ).pack(anchor="w")
 
-        datos_cliente = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        datos_cliente = tk.Frame(contenido, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         datos_cliente.pack(fill="x", padx=22, pady=(0, 12))
         datos_cliente.grid_columnconfigure(1, weight=2)
         datos_cliente.grid_columnconfigure(3, weight=1)
@@ -1488,7 +1510,7 @@ class PizzeriaApp(tk.Tk):
         tipo_entrega.trace_add("write", actualizar_direccion)
         actualizar_direccion()
 
-        cuerpo = tk.Frame(ventana, bg=self.colors["bg"])
+        cuerpo = tk.Frame(contenido, bg=self.colors["bg"])
         cuerpo.pack(fill="both", expand=True, padx=22, pady=(0, 12))
         cuerpo.grid_columnconfigure(0, weight=3)
         cuerpo.grid_columnconfigure(1, weight=2)
@@ -1635,7 +1657,7 @@ class PizzeriaApp(tk.Tk):
             carrito.pop(nombre, None)
             renderizar_carrito()
 
-        pie = tk.Frame(ventana, bg=self.colors["bg"])
+        pie = tk.Frame(contenido, bg=self.colors["bg"])
         pie.pack(fill="x", padx=22, pady=(0, 18))
         self._boton_accion(pie, "Cancelar", ventana.destroy, "secundario").pack(side="right", padx=(10, 0))
         self._boton_accion(pie, "Quitar seleccionado", quitar_producto, "peligro").pack(side="left")
