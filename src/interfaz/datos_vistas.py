@@ -1,3 +1,6 @@
+# Arma los datos que consumen las tablas y gráficos de Tkinter.
+# Las claves internas son estables para el código; los encabezados visibles se definen en menu_grafico.py.
+
 from src.modelos.producto import Bebida, Empanada, Pizza
 from src.servicios.cocina_threads import calcular_tiempo_estimado, determinar_estaciones_pedido
 from src.interfaz.formateadores import (
@@ -30,7 +33,7 @@ def detalle_producto(producto):
         extras = []
         for ingrediente, cantidad in producto.ingredientes_extra.items():
             extras.append(f"{nombre_ingrediente_visible(ingrediente)} x{cantidad}")
-        detalle = f"TamaÃ±o {producto.tamanio}"
+        detalle = f"Tamaño {producto.tamanio}"
         if extras:
             detalle += " | " + ", ".join(extras)
         return detalle

@@ -1,3 +1,7 @@
+# Funciones de presentación: convierten valores internos del sistema en texto
+# prolijo para botones, tablas, tickets y mensajes de la interfaz gráfica.
+
+
 def formato_moneda(valor):
     try:
         numero = float(valor)
@@ -29,7 +33,7 @@ def leer_importe(texto):
 def estado_visible(estado):
     estados = {
         "pendiente": "Pendiente",
-        "en preparacion": "En preparaciÃ³n",
+        "en preparacion": "En preparación",
         "listo": "Listo",
         "en camino": "En camino",
         "entregado": "Entregado",
@@ -41,9 +45,9 @@ def estado_visible(estado):
 
 def nombre_ingrediente_visible(nombre):
     ingredientes = {
-        "jamon": "jamÃ³n",
-        "morron": "morrÃ³n",
-        "jamon_queso": "jamÃ³n y queso",
+        "jamon": "jamón",
+        "morron": "morrón",
+        "jamon_queso": "jamón y queso",
         "tapas_empanada": "tapas de empanada",
     }
     texto = str(nombre).strip()
@@ -59,9 +63,9 @@ def capitalizar_visible(texto):
 
 def normalizar_ingrediente_ingresado(nombre):
     ingredientes = {
-        "jamÃ³n": "jamon",
-        "morrÃ³n": "morron",
-        "jamÃ³n y queso": "jamon_queso",
+        "jamón": "jamon",
+        "morrón": "morron",
+        "jamón y queso": "jamon_queso",
         "tapas de empanada": "tapas_empanada",
     }
     texto = str(nombre).strip().lower()

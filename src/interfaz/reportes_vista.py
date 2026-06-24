@@ -1,3 +1,6 @@
+# Puente entre la interfaz y los reportes Excel.
+# Mantiene la sincronización de ventas en un solo lugar antes de generar archivos.
+
 from src.servicios.reportes_excel import generar_reporte_stock, generar_reporte_ventas
 
 

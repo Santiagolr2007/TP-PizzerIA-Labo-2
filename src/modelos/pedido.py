@@ -136,7 +136,6 @@ class Pedido:
         texto = validar_texto(estado, "estado").strip().lower()
         equivalencias = {
             "en preparacion": "en preparacion",
-            "en preparaciÃ³n": "en preparacion",
             "en preparación": "en preparacion",
         }
         return equivalencias.get(texto, texto)

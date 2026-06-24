@@ -1,7 +1,6 @@
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
-
 from src.modelos.producto import Bebida, Empanada, Pizza
 from src.interfaz.datos_vistas import (
     datos_grafico_descuentos,
@@ -548,6 +547,7 @@ class PizzeriaApp(tk.Tk):
         return marco, cuerpo
 
     def _crear_tabla(self, parent, columnas, encabezados, anchos=None, alto=12):
+        # columnas usa claves internas estables; encabezados define el texto prolijo que ve el usuario.
         contenedor = tk.Frame(parent, bg=self.colors["surface"])
         contenedor.grid_columnconfigure(0, weight=1)
         contenedor.grid_rowconfigure(0, weight=1)
@@ -1034,7 +1034,6 @@ class PizzeriaApp(tk.Tk):
         estado = str(fila.get("estado", "")).lower()
         estado = {
             "en preparación": "en preparacion",
-            "en preparaciÃ³n": "en preparacion",
         }.get(estado, estado)
         if estado in {"pendiente", "en preparacion", "listo", "en camino", "entregado", "cancelado"}:
             return estado
