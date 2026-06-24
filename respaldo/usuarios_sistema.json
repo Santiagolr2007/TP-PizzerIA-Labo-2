@@ -2,7 +2,7 @@
     "administrador": {
         "nombre": "Administrador",
         "rol": "Administrador",
-        "hash": "9656b51a10356fb68a599f266e216a7085116ecf414cd28ebed19bd2645fd2fc"
+        "hash": "cbff133e8b4af94fb6dbcda1a7530c65e2f0acf524d09adc9f4864aaedd4787f"
     },
     "empleado": {
         "nombre": "Empleado",

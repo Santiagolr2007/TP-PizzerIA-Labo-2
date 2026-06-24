@@ -141,9 +141,8 @@ class PizzeriaApp(tk.Tk):
         self.usuario_actual = None
 
         self.title("PizzerIA - Gestión de pizzería")
-        self.geometry("1180x720")
-        self.minsize(1020, 640)
         self.configure(bg=self.colors["bg"])
+        self._configurar_ventana_principal()
 
         self.pizzeria = crear_sistema()
         self.page_title = tk.StringVar(value="Panel")
@@ -199,6 +198,72 @@ class PizzeriaApp(tk.Tk):
         estilo.configure("TCombobox", padding=8)
         estilo.configure("TEntry", padding=8)
         estilo.configure("TSpinbox", padding=8)
+
+    def _calcular_geometria_adaptada(self, ancho, alto, min_ancho, min_alto, margen=80):
+        pantalla_ancho = self.winfo_screenwidth()
+        pantalla_alto = self.winfo_screenheight()
+        max_ancho = max(360, pantalla_ancho - margen)
+        max_alto = max(320, pantalla_alto - margen)
+        ancho_final = min(ancho, max_ancho)
+        alto_final = min(alto, max_alto)
+        min_ancho_final = min(min_ancho, ancho_final)
+        min_alto_final = min(min_alto, alto_final)
+        x = max(0, (pantalla_ancho - ancho_final) // 2)
+        y = max(0, (pantalla_alto - alto_final) // 2)
+        return ancho_final, alto_final, min_ancho_final, min_alto_final, x, y
+
+    def _configurar_ventana_principal(self):
+        ancho, alto, min_ancho, min_alto, x, y = self._calcular_geometria_adaptada(
+            1180,
+            720,
+            1020,
+            640,
+            margen=70,
+        )
+        self.geometry(f"{ancho}x{alto}+{x}+{y}")
+        self.minsize(min_ancho, min_alto)
+
+    def _configurar_dialogo(self, ventana, ancho, alto, min_ancho, min_alto):
+        ancho, alto, min_ancho, min_alto, x, y = self._calcular_geometria_adaptada(
+            ancho,
+            alto,
+            min_ancho,
+            min_alto,
+            margen=90,
+        )
+        ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
+        ventana.minsize(min_ancho, min_alto)
+        ventana.resizable(True, True)
+
+    def _crear_contenido_scrollable(self, ventana):
+        contenedor = tk.Frame(ventana, bg=self.colors["bg"])
+        contenedor.pack(fill="both", expand=True)
+        contenedor.grid_columnconfigure(0, weight=1)
+        contenedor.grid_rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(contenedor, bg=self.colors["bg"], highlightthickness=0)
+        scroll = ttk.Scrollbar(contenedor, orient="vertical", command=canvas.yview)
+        interior = tk.Frame(canvas, bg=self.colors["bg"])
+        ventana_canvas = canvas.create_window((0, 0), window=interior, anchor="nw")
+        canvas.configure(yscrollcommand=scroll.set)
+
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
+
+        def ajustar_scroll(_evento=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def ajustar_ancho(evento):
+            canvas.itemconfigure(ventana_canvas, width=evento.width)
+
+        def rueda(evento):
+            canvas.yview_scroll(int(-1 * (evento.delta / 120)), "units")
+
+        interior.bind("<Configure>", ajustar_scroll)
+        canvas.bind("<Configure>", ajustar_ancho)
+        canvas.bind("<Enter>", lambda _evento: canvas.bind_all("<MouseWheel>", rueda))
+        canvas.bind("<Leave>", lambda _evento: canvas.unbind_all("<MouseWheel>"))
+        return interior
 
     def _crear_layout(self):
         self.grid_columnconfigure(1, weight=1)
@@ -397,13 +462,13 @@ class PizzeriaApp(tk.Tk):
     def _mostrar_login(self):
         ventana = tk.Toplevel(self)
         ventana.title("Iniciar sesión")
-        ventana.geometry("440x420")
-        ventana.resizable(False, False)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
+        self._configurar_dialogo(ventana, 500, 520, 400, 420)
 
-        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        contenido = self._crear_contenido_scrollable(ventana)
+        marco = tk.Frame(contenido, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         marco.pack(fill="both", expand=True, padx=24, pady=24)
 
         tk.Label(
@@ -987,11 +1052,10 @@ class PizzeriaApp(tk.Tk):
 
         ventana = tk.Toplevel(self)
         ventana.title("Editar producto" if producto else "Nuevo producto")
-        ventana.geometry("560x560")
-        ventana.minsize(520, 520)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
+        self._configurar_dialogo(ventana, 620, 680, 500, 500)
 
         categoria_inicial = producto.__class__.__name__ if producto else "Pizza"
         categoria = tk.StringVar(value=categoria_inicial)
@@ -1006,7 +1070,8 @@ class PizzeriaApp(tk.Tk):
         if isinstance(producto, Pizza):
             extras.set(", ".join(f"{ingrediente}:{cantidad}" for ingrediente, cantidad in producto.ingredientes_extra.items()))
 
-        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        contenido = self._crear_contenido_scrollable(ventana)
+        marco = tk.Frame(contenido, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         marco.pack(fill="both", expand=True, padx=22, pady=22)
 
         tk.Label(
@@ -1568,13 +1633,13 @@ class PizzeriaApp(tk.Tk):
 
         ventana = tk.Toplevel(self)
         ventana.title("Usuarios")
-        ventana.geometry("460x330")
-        ventana.resizable(False, False)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
+        self._configurar_dialogo(ventana, 540, 500, 420, 380)
 
-        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        contenido = self._crear_contenido_scrollable(ventana)
+        marco = tk.Frame(contenido, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         marco.pack(fill="both", expand=True, padx=22, pady=22)
         tk.Label(
             marco,
@@ -1630,11 +1695,10 @@ class PizzeriaApp(tk.Tk):
     def abrir_dialogo_pedido(self):
         ventana = tk.Toplevel(self)
         ventana.title("Nuevo pedido")
-        ventana.geometry("940x680")
-        ventana.minsize(860, 620)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
+        self._configurar_dialogo(ventana, 980, 720, 760, 540)
 
         carrito = {}
         cliente = tk.StringVar()
@@ -1857,10 +1921,10 @@ class PizzeriaApp(tk.Tk):
 
         ventana = tk.Toplevel(self)
         ventana.title("Reponer stock")
-        ventana.geometry("430x260")
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
         ventana.grab_set()
+        self._configurar_dialogo(ventana, 460, 340, 360, 280)
 
         ingrediente = tk.StringVar(value=ingredientes[0])
         cantidad = tk.StringVar(value="1")
@@ -1913,12 +1977,12 @@ class PizzeriaApp(tk.Tk):
     def _mostrar_ticket(self, pedido):
         ventana = tk.Toplevel(self)
         ventana.title(f"Ticket pedido #{pedido.pedido_id}")
-        ventana.geometry("560x560")
-        ventana.minsize(520, 500)
         ventana.configure(bg=self.colors["bg"])
         ventana.transient(self)
+        self._configurar_dialogo(ventana, 720, 680, 460, 420)
 
-        marco = tk.Frame(ventana, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
+        contenido = self._crear_contenido_scrollable(ventana)
+        marco = tk.Frame(contenido, bg=self.colors["surface"], highlightthickness=1, highlightbackground=self.colors["line"])
         marco.pack(fill="both", expand=True, padx=22, pady=22)
         tk.Label(marco, text=f"Pedido #{pedido.pedido_id}", bg=self.colors["surface"], fg=self.colors["text"], font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=16, pady=(16, 2))
         tk.Label(marco, text=f"Cliente: {pedido.cliente}", bg=self.colors["surface"], fg=self.colors["muted"], font=("Segoe UI", 10)).pack(anchor="w", padx=16)
