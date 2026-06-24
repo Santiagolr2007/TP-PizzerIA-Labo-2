@@ -3,111 +3,39 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from src.modelos.producto import Bebida, Empanada, Pizza
-from src.servicios.cocina_threads import (
-    calcular_tiempo_estimado,
-    determinar_estaciones_pedido,
-    procesar_pedidos_con_hilos,
+from src.interfaz.datos_vistas import (
+    datos_grafico_descuentos,
+    datos_grafico_estados,
+    datos_grafico_productos,
+    datos_grafico_stock_bajo,
+    filas_catalogo,
+    filas_cocina,
+    filas_estaciones,
+    filas_eventos_cocina,
+    filas_pedidos,
+    filas_stock,
+    resumen_estados,
+    stock_bajo,
 )
+from src.interfaz.formateadores import (
+    estado_visible,
+    formato_moneda,
+    formato_numero,
+    leer_importe,
+    normalizar_ingrediente_ingresado,
+)
+from src.interfaz.reportes_vista import (
+    generar_archivos_reportes_actualizados,
+    sincronizar_ventas_entregadas,
+)
+from src.servicios.cocina_threads import procesar_pedidos_con_hilos
 from src.servicios.inicializacion import crear_sistema, obtener_dolar_referencia
 from src.servicios.persistencia import cargar_respaldo_pizzeria, guardar_json
 from src.servicios.promociones import calcular_descuentos_por_linea, calcular_promociones_pedido
-from src.servicios.reportes_excel import (generar_reporte_stock,generar_reporte_ventas,leer_reporte_excel,)
+from src.servicios.reportes_excel import leer_reporte_excel
 from src.servicios.tickets_pdf import generar_ticket_pdf
 from src.servicios.usuarios import cambiar_contrasenia, validar_usuario
 from src.utils.excepciones import PizzeriaError
-
-
-def formato_moneda(valor):
-    try:
-        numero = float(valor)
-    except (TypeError, ValueError):
-        numero = 0
-    texto = f"{numero:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
-    return f"${texto}"
-
-
-def formato_numero(valor):
-    try:
-        numero = float(valor)
-    except (TypeError, ValueError):
-        return str(valor)
-
-    if numero.is_integer():
-        return str(int(numero))
-
-    return f"{numero:.2f}"
-
-
-def leer_importe(texto):
-    valor = str(texto).strip().replace("$", "").replace(" ", "")
-    if "," in valor:
-        valor = valor.replace(".", "").replace(",", ".")
-    return float(valor)
-
-
-def estado_visible(estado):
-    estados = {
-        "pendiente": "Pendiente",
-        "en preparacion": "En preparación",
-        "listo": "Listo",
-        "en camino": "En camino",
-        "entregado": "Entregado",
-        "cancelado": "Cancelado",
-    }
-    texto = str(estado).strip().lower()
-    return estados.get(texto, str(estado).replace("_", " ").capitalize())
-
-
-def nombre_ingrediente_visible(nombre):
-    ingredientes = {
-        "jamon": "jamón",
-        "morron": "morrón",
-        "jamon_queso": "jamón y queso",
-        "tapas_empanada": "tapas de empanada",
-    }
-    texto = str(nombre).strip()
-    return ingredientes.get(texto.lower(), texto.replace("_", " "))
-
-
-def capitalizar_visible(texto):
-    texto_visible = nombre_ingrediente_visible(texto)
-    if not texto_visible:
-        return ""
-    return texto_visible[0].upper() + texto_visible[1:]
-
-
-def normalizar_ingrediente_ingresado(nombre):
-    ingredientes = {
-        "jamón": "jamon",
-        "morrón": "morron",
-        "jamón y queso": "jamon_queso",
-        "tapas de empanada": "tapas_empanada",
-    }
-    texto = str(nombre).strip().lower()
-    return ingredientes.get(texto, texto)
-
-
-def obtener_resumen_productos(pedido):
-    productos_agrupados = {}
-
-    for linea in pedido.iterar_lineas_detalle():
-        nombre = linea["nombre"]
-        if nombre not in productos_agrupados:
-            productos_agrupados[nombre] = {"cantidad": 0, "subtotal": 0, "descuento": 0}
-
-        productos_agrupados[nombre]["cantidad"] += linea["cantidad"]
-        productos_agrupados[nombre]["subtotal"] += linea["subtotal"]
-        productos_agrupados[nombre]["descuento"] += linea["descuento"]
-
-    textos = []
-    for nombre_producto, datos in productos_agrupados.items():
-        texto = f"{nombre_producto} x{datos['cantidad']} ({formato_moneda(datos['subtotal'])})"
-        if datos["descuento"]:
-            texto += " promo"
-        textos.append(texto)
-
-    return ", ".join(textos)
-
 
 class PizzeriaApp(tk.Tk):
     def __init__(self):
@@ -655,192 +583,6 @@ class PizzeriaApp(tk.Tk):
                 tags = (tag,) if tag else ()
             tabla.insert("", "end", values=valores, tags=tags)
 
-    def _resumen_estados(self):
-        resumen = {
-            "pendiente": 0,
-            "en preparacion": 0,
-            "listo": 0,
-            "en camino": 0,
-            "entregado": 0,
-            "cancelado": 0,
-        }
-        for pedido in self.pizzeria.obtener_pedidos():
-            if pedido.estado in resumen:
-                resumen[pedido.estado] += 1
-        return resumen
-
-    def _detalle_producto(self, producto):
-        if isinstance(producto, Pizza):
-            extras = []
-            for ingrediente, cantidad in producto.ingredientes_extra.items():
-                extras.append(f"{nombre_ingrediente_visible(ingrediente)} x{cantidad}")
-            detalle = f"Tamaño {producto.tamanio}"
-            if extras:
-                detalle += " | " + ", ".join(extras)
-            return detalle
-
-        if isinstance(producto, Empanada):
-            return f"Relleno: {nombre_ingrediente_visible(producto.ingrediente_relleno)}"
-
-        if isinstance(producto, Bebida):
-            ingrediente = producto.ingrediente_stock or "sin control"
-            return f"Stock asociado: {nombre_ingrediente_visible(ingrediente)}"
-
-        return ""
-
-    def _filas_catalogo(self, filtro=""):
-        filtro = filtro.lower().strip()
-        filas = []
-        for numero, producto in enumerate(self.pizzeria.obtener_catalogo(), start=1):
-            fila = {
-                "numero": numero,
-                "producto": producto.nombre,
-                "categoria": producto.__class__.__name__,
-                "detalle": self._detalle_producto(producto),
-                "precio": formato_moneda(producto.calcular_precio()),
-            }
-            texto_busqueda = f"{fila['producto']} {fila['categoria']} {fila['detalle']}".lower()
-            if filtro and filtro not in texto_busqueda:
-                continue
-            filas.append(fila)
-        return filas
-
-    def _filas_pedidos(self):
-        filas = []
-        for pedido in self.pizzeria.obtener_pedidos():
-            filas.append(
-                {
-                    "pedido_id": pedido.pedido_id,
-                    "cliente": pedido.cliente,
-                    "entrega": pedido.tipo_entrega,
-                    "direccion": pedido.direccion or "-",
-                    "estado": estado_visible(pedido.estado),
-                    "productos": obtener_resumen_productos(pedido),
-                    "descuento": formato_moneda(pedido.calcular_descuento_total()),
-                    "total": formato_moneda(pedido.calcular_total()),
-                }
-            )
-        return filas
-
-    def _tiempo_pedido_visible(self, pedido):
-        if pedido.estado == "en preparacion":
-            return f"{pedido.tiempo_restante or pedido.tiempo_estimado} min"
-
-        if pedido.estado == "pendiente":
-            return f"{calcular_tiempo_estimado(pedido)} min est."
-
-        if pedido.estado == "listo":
-            return "Listo"
-
-        return "-"
-
-    def _filas_cocina(self):
-        # Cocina muestra pedidos activos: pendientes, en preparacion, listos y delivery en camino.
-        # Se excluyen entregados/cancelados porque ya no necesitan trabajo operativo.
-        filas = []
-        estados_cocina = {"pendiente", "en preparacion", "listo", "en camino"}
-
-        for pedido in self.pizzeria.obtener_pedidos():
-            if pedido.estado not in estados_cocina:
-                continue
-
-            filas.append(
-                {
-                    "pedido_id": pedido.pedido_id,
-                    "cliente": pedido.cliente,
-                    "estado": estado_visible(pedido.estado),
-                    "estacion": pedido.estacion_cocina or determinar_estaciones_pedido(pedido),
-                    "cocinero": pedido.cocinero_asignado or "-",
-                    "tiempo": self._tiempo_pedido_visible(pedido),
-                    "entrega": pedido.tipo_entrega,
-                    "direccion": pedido.direccion or "-",
-                }
-            )
-
-        return filas
-
-    def _filas_estaciones(self):
-        resumen = {}
-
-        for pedido in self.pizzeria.obtener_pedidos():
-            if pedido.estado in {"entregado", "cancelado"}:
-                continue
-
-            estacion = pedido.estacion_cocina or determinar_estaciones_pedido(pedido)
-            if estacion not in resumen:
-                resumen[estacion] = {"estacion": estacion, "pendientes": 0, "en_preparacion": 0, "listos": 0}
-
-            if pedido.estado == "pendiente":
-                resumen[estacion]["pendientes"] += 1
-            elif pedido.estado == "en preparacion":
-                resumen[estacion]["en_preparacion"] += 1
-            elif pedido.estado == "listo":
-                resumen[estacion]["listos"] += 1
-
-        return list(resumen.values())
-
-    def _filas_eventos_cocina(self):
-        filas = []
-        for evento in self.cocina_eventos[:10]:
-            filas.append(
-                {
-                    "pedido_id": evento.get("pedido_id", "-"),
-                    "evento": estado_visible(evento.get("tipo", "")),
-                    "cocinero": evento.get("cocinero", "-"),
-                    "estacion": evento.get("estacion", "-"),
-                    "tiempo": f"{evento.get('tiempo_restante', 0)} min",
-                    "mensaje": evento.get("mensaje", ""),
-                }
-            )
-        return filas
-
-    def _filas_stock(self):
-        filas = []
-        for fila in self.pizzeria.inventario.obtener_stock_detallado():
-            cantidad = fila["cantidad"]
-            filas.append(
-                {
-                    "ingrediente": capitalizar_visible(fila["ingrediente"]),
-                    "cantidad": formato_numero(cantidad),
-                    "precio_unitario": formato_moneda(fila["precio_unitario"]),
-                    "valor_total_stock": formato_moneda(fila["valor_total_stock"]),
-                    "estado": "Reponer" if cantidad <= 5 else "Disponible",
-                }
-            )
-        filas.sort(key=lambda fila: fila["ingrediente"])
-        return filas
-
-    def _total_ventas(self):
-        self._sincronizar_ventas_entregadas()
-        total = 0
-        for venta in self.pizzeria.obtener_ventas():
-            try:
-                total += float(venta.get("subtotal", 0))
-            except (TypeError, ValueError):
-                pass
-        return total
-
-    def _sincronizar_ventas_entregadas(self, notificar=False):
-        # Antes de reportar o respaldar, completa ventas faltantes desde pedidos entregados.
-        ventas_agregadas = self.pizzeria.sincronizar_ventas_entregadas()
-        if ventas_agregadas and notificar:
-            self._set_status(f"Ventas sincronizadas: {ventas_agregadas} pedidos entregados agregados.")
-        return ventas_agregadas
-
-    def _generar_archivos_reportes(self):
-        # Punto unico de generacion: mantiene Excel y vista de reportes con los mismos datos.
-        self._sincronizar_ventas_entregadas()
-        ruta_ventas = generar_reporte_ventas(self.pizzeria.obtener_ventas())
-        ruta_stock = generar_reporte_stock(self.pizzeria.inventario.obtener_stock_detallado())
-        return ruta_ventas, ruta_stock
-
-    def _stock_bajo(self):
-        cantidad = 0
-        for fila in self.pizzeria.inventario.obtener_stock_detallado():
-            if fila["cantidad"] <= 5:
-                cantidad += 1
-        return cantidad
-
     def mostrar_panel(self):
         self.current_view = "panel"
         self._seleccionar_nav("panel")
@@ -879,14 +621,14 @@ class PizzeriaApp(tk.Tk):
             metricas.grid_columnconfigure(columna, weight=1, uniform="metricas")
 
         pedidos = self.pizzeria.obtener_pedidos()
-        estados = self._resumen_estados()
+        estados = resumen_estados(self.pizzeria)
         datos_metricas = [
             ("Pedidos", len(pedidos), "Total cargado", self.colors["info"]),
             ("Pendientes", estados["pendiente"], "Para cocina", self.colors["accent"]),
             ("Preparación", estados["en preparacion"], "Trabajando ahora", self.colors["info"]),
             ("Listos", estados["listo"], "Para entregar", self.colors["success"]),
             ("Delivery", estados["en camino"], "En camino", self.colors["warning"]),
-            ("Stock bajo", self._stock_bajo(), "Ingredientes criticos", self.colors["danger"]),
+            ("Stock bajo", stock_bajo(self.pizzeria), "Ingredientes criticos", self.colors["danger"]),
         ]
 
         for columna, (titulo, valor, detalle, color) in enumerate(datos_metricas):
@@ -921,7 +663,7 @@ class PizzeriaApp(tk.Tk):
         )
         frame_cocina.pack(fill="both", expand=True)
         self._configurar_tags_pedidos(tabla_cocina)
-        self._llenar_tabla(tabla_cocina, columnas_cocina, self._filas_cocina(), self._tag_pedido)
+        self._llenar_tabla(tabla_cocina, columnas_cocina, filas_cocina(self.pizzeria), self._tag_pedido)
 
         seccion_estaciones, body_estaciones = self._crear_seccion(cuerpo, "Estaciones", "Carga actual por sector")
         seccion_estaciones.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=(0, 10))
@@ -934,7 +676,7 @@ class PizzeriaApp(tk.Tk):
             alto=7,
         )
         frame_estaciones.pack(fill="both", expand=True)
-        self._llenar_tabla(tabla_estaciones, columnas_estaciones, self._filas_estaciones())
+        self._llenar_tabla(tabla_estaciones, columnas_estaciones, filas_estaciones(self.pizzeria))
 
         seccion_pedidos, body_pedidos = self._crear_seccion(cuerpo, "Pedidos recientes", "Ultimos movimientos del mostrador")
         seccion_pedidos.grid(row=1, column=0, sticky="nsew", padx=(0, 10), pady=(10, 0))
@@ -948,7 +690,7 @@ class PizzeriaApp(tk.Tk):
         )
         frame_tabla.pack(fill="both", expand=True)
         self._configurar_tags_pedidos(tabla)
-        self._llenar_tabla(tabla, columnas_pedidos, self._filas_pedidos()[-12:], self._tag_pedido)
+        self._llenar_tabla(tabla, columnas_pedidos, filas_pedidos(self.pizzeria)[-12:], self._tag_pedido)
         tabla.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla))
 
         seccion_stock, body_stock = self._crear_seccion(cuerpo, "Stock critico", "Ingredientes con poca disponibilidad")
@@ -963,8 +705,8 @@ class PizzeriaApp(tk.Tk):
         )
         frame_stock.pack(fill="both", expand=True)
         tabla_stock.tag_configure("bajo", foreground=self.colors["danger"])
-        filas_stock = [fila for fila in self._filas_stock() if fila["estado"] == "Reponer"]
-        self._llenar_tabla(tabla_stock, columnas_stock, filas_stock, lambda _fila: "bajo")
+        filas_stock_bajo = [fila for fila in filas_stock(self.pizzeria) if fila["estado"] == "Reponer"]
+        self._llenar_tabla(tabla_stock, columnas_stock, filas_stock_bajo, lambda _fila: "bajo")
 
     def _tarjeta_metrica(self, parent, titulo, valor, detalle, color):
         marco = tk.Frame(
@@ -1037,7 +779,7 @@ class PizzeriaApp(tk.Tk):
         tabla.bind("<Double-1>", lambda _evento: self.editar_producto_desde_tabla(tabla))
 
         def renderizar(_evento=None):
-            self._llenar_tabla(tabla, columnas, self._filas_catalogo(busqueda.get()))
+            self._llenar_tabla(tabla, columnas, filas_catalogo(self.pizzeria, busqueda.get()))
 
         entrada.bind("<KeyRelease>", renderizar)
         renderizar()
@@ -1277,7 +1019,7 @@ class PizzeriaApp(tk.Tk):
         )
         frame_tabla.pack(fill="both", expand=True)
         self._configurar_tags_pedidos(tabla)
-        self._llenar_tabla(tabla, columnas, self._filas_pedidos(), self._tag_pedido)
+        self._llenar_tabla(tabla, columnas, filas_pedidos(self.pizzeria), self._tag_pedido)
         tabla.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla))
 
     def _configurar_tags_pedidos(self, tabla):
@@ -1339,7 +1081,7 @@ class PizzeriaApp(tk.Tk):
         )
         frame_cola.pack(fill="both", expand=True)
         self._configurar_tags_pedidos(tabla_cola)
-        self._llenar_tabla(tabla_cola, columnas_cola, self._filas_cocina(), self._tag_pedido)
+        self._llenar_tabla(tabla_cola, columnas_cola, filas_cocina(self.pizzeria), self._tag_pedido)
         tabla_cola.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla_cola))
 
         lateral = tk.Frame(contenedor, bg=self.colors["bg"])
@@ -1359,7 +1101,7 @@ class PizzeriaApp(tk.Tk):
             alto=6,
         )
         frame_estaciones.pack(fill="both", expand=True)
-        self._llenar_tabla(tabla_estaciones, columnas_estaciones, self._filas_estaciones())
+        self._llenar_tabla(tabla_estaciones, columnas_estaciones, filas_estaciones(self.pizzeria))
 
         seccion_eventos, body_eventos = self._crear_seccion(lateral, "Eventos recientes", "Actividad de hilos")
         seccion_eventos.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
@@ -1372,7 +1114,7 @@ class PizzeriaApp(tk.Tk):
             alto=6,
         )
         frame_eventos.pack(fill="both", expand=True)
-        self._llenar_tabla(tabla_eventos, columnas_eventos, self._filas_eventos_cocina())
+        self._llenar_tabla(tabla_eventos, columnas_eventos, filas_eventos_cocina(self.cocina_eventos))
 
     def mostrar_stock(self):
         self.current_view = "stock"
@@ -1421,7 +1163,7 @@ class PizzeriaApp(tk.Tk):
         )
         frame_tabla.pack(fill="both", expand=True)
         tabla.tag_configure("bajo", foreground=self.colors["danger"])
-        self._llenar_tabla(tabla, columnas, self._filas_stock(), lambda fila: "bajo" if fila["estado"] == "Reponer" else "")
+        self._llenar_tabla(tabla, columnas, filas_stock(self.pizzeria), lambda fila: "bajo" if fila["estado"] == "Reponer" else "")
 
     def mostrar_reportes(self):
         if not self._requiere_admin("ver reportes e historial de ventas"):
@@ -1436,7 +1178,7 @@ class PizzeriaApp(tk.Tk):
         self._refrescar_caja()
         try:
             # La pestaña lee archivos Excel, por eso primero los regeneramos.
-            self._generar_archivos_reportes()
+            generar_archivos_reportes_actualizados(self.pizzeria)
         except Exception as error:
             self._set_status(f"No se pudieron actualizar los reportes: {error}")
 
@@ -1463,51 +1205,16 @@ class PizzeriaApp(tk.Tk):
         tab.grid_rowconfigure(1, weight=1)
 
         graficos = [
-            ("Pedidos por estado", self._datos_grafico_estados(), self.colors["info"], 0, 0),
-            ("Ventas por producto", self._datos_grafico_productos(), self.colors["accent"], 0, 1),
-            ("Stock mas bajo", self._datos_grafico_stock_bajo(), self.colors["danger"], 1, 0),
-            ("Descuentos por promocion", self._datos_grafico_descuentos(), self.colors["success"], 1, 1),
+            ("Pedidos por estado", datos_grafico_estados(self.pizzeria), self.colors["info"], 0, 0),
+            ("Ventas por producto", datos_grafico_productos(self.pizzeria), self.colors["accent"], 0, 1),
+            ("Stock mas bajo", datos_grafico_stock_bajo(self.pizzeria), self.colors["danger"], 1, 0),
+            ("Descuentos por promocion", datos_grafico_descuentos(self.pizzeria), self.colors["success"], 1, 1),
         ]
 
         for titulo, datos, color, fila, columna in graficos:
             seccion, cuerpo = self._crear_seccion(tab, titulo)
             seccion.grid(row=fila, column=columna, sticky="nsew", padx=(0 if columna == 0 else 10, 0), pady=(0 if fila == 0 else 10, 0))
             self._dibujar_grafico_barras(cuerpo, datos, color)
-
-    def _datos_grafico_estados(self):
-        estados = self._resumen_estados()
-        return [
-            ("Pend.", estados["pendiente"]),
-            ("Prep.", estados["en preparacion"]),
-            ("Listos", estados["listo"]),
-            ("Camino", estados["en camino"]),
-            ("Entreg.", estados["entregado"]),
-            ("Cancel.", estados["cancelado"]),
-        ]
-
-    def _datos_grafico_productos(self):
-        ventas_por_producto = {}
-        for venta in self.pizzeria.obtener_ventas():
-            producto = str(venta.get("producto", "")).strip()
-            if not producto:
-                continue
-            ventas_por_producto[producto] = ventas_por_producto.get(producto, 0) + float(venta.get("subtotal", 0) or 0)
-
-        datos = sorted(ventas_por_producto.items(), key=lambda item: item[1], reverse=True)
-        return datos[:6]
-
-    def _datos_grafico_stock_bajo(self):
-        filas = []
-        for item in self.pizzeria.inventario.obtener_stock_detallado():
-            filas.append((capitalizar_visible(item["ingrediente"]), float(item["cantidad"])))
-        filas.sort(key=lambda item: item[1])
-        return filas[:6]
-
-    def _datos_grafico_descuentos(self):
-        total_descuento = 0
-        for venta in self.pizzeria.obtener_ventas():
-            total_descuento += float(venta.get("descuento", 0) or 0)
-        return [("Promos", total_descuento)] if total_descuento else []
 
     def _dibujar_grafico_barras(self, parent, datos, color):
         canvas = tk.Canvas(parent, bg=self.colors["surface"], highlightthickness=0, height=210)
@@ -1655,7 +1362,7 @@ class PizzeriaApp(tk.Tk):
 
         seccion_estado, body_estado = self._crear_seccion(contenedor, "Estado actual", "Datos rápidos del sistema")
         seccion_estado.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(20, 0))
-        estados = self._resumen_estados()
+        estados = resumen_estados(self.pizzeria)
         datos = [
             ("Pedidos pendientes", estados["pendiente"]),
             ("Pedidos listos", estados["listo"]),
@@ -1799,7 +1506,7 @@ class PizzeriaApp(tk.Tk):
             alto=11,
         )
         frame_catalogo.pack(fill="both", expand=True)
-        self._llenar_tabla(tabla_catalogo, columnas_catalogo, self._filas_catalogo())
+        self._llenar_tabla(tabla_catalogo, columnas_catalogo, filas_catalogo(self.pizzeria))
 
         controles = tk.Frame(body_catalogo, bg=self.colors["surface"])
         controles.pack(fill="x", pady=(12, 0))
@@ -2190,7 +1897,7 @@ class PizzeriaApp(tk.Tk):
         if self.busy:
             return
 
-        resumen_antes = self._resumen_estados()
+        resumen_antes = resumen_estados(self.pizzeria)
         if resumen_antes["pendiente"] == 0:
             messagebox.showinfo("Cocina", "No hay pedidos pendientes para procesar.")
             return
@@ -2212,8 +1919,15 @@ class PizzeriaApp(tk.Tk):
                 )
             except Exception as exc:
                 error = exc
-            resumen_despues = self._resumen_estados()
-            self.after(0, lambda: self._finalizar_cocina(resumen_antes, resumen_despues, error))
+            resumen_despues = resumen_estados(self.pizzeria)
+            self.after(
+                0,
+                lambda antes=resumen_antes, despues=resumen_despues, error=error: self._finalizar_cocina(
+                    antes,
+                    despues,
+                    error,
+                ),
+            )
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -2237,7 +1951,7 @@ class PizzeriaApp(tk.Tk):
         if not self._requiere_admin("guardar respaldos"):
             return
 
-        self._sincronizar_ventas_entregadas()
+        sincronizar_ventas_entregadas(self.pizzeria)
         datos = {
             "dinero": self.pizzeria.obtener_dinero(),
             "catalogo": self.pizzeria.catalogo_to_dict(),
@@ -2281,7 +1995,7 @@ class PizzeriaApp(tk.Tk):
                 valor = consultar_dolar_oficial()
                 self.after(0, lambda: self._mostrar_dolar(valor, None))
             except Exception as error:
-                self.after(0, lambda: self._mostrar_dolar(None, error))
+                self.after(0, lambda error=error: self._mostrar_dolar(None, error))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -2300,7 +2014,7 @@ class PizzeriaApp(tk.Tk):
             return
 
         try:
-            ruta_ventas, ruta_stock = self._generar_archivos_reportes()
+            ruta_ventas, ruta_stock = generar_archivos_reportes_actualizados(self.pizzeria)
         except Exception as error:
             messagebox.showerror("Reportes", f"No se pudieron generar los reportes:\n{error}")
             return

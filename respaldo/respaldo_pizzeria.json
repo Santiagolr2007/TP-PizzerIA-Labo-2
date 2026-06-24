@@ -1,5 +1,5 @@
 {
-    "dinero": 15247,
+    "dinero": 17188,
     "catalogo": [
         {
             "nombre": "Pizza muzzarella",
@@ -96,28 +96,62 @@
             "precio_base": 1490.0,
             "tipo": "Bebida",
             "ingrediente_stock": "agua"
+        },
+        {
+            "nombre": "Pizza anana",
+            "precio_base": 10000.0,
+            "tipo": "Pizza",
+            "tamanio": "grande",
+            "ingredientes_extra": {
+                "jamon crudo": 2
+            }
         }
     ],
     "stock": {
-        "harina": 35,
-        "salsa": 66,
-        "mozzarella": 64,
-        "jamon": 58,
-        "morron": 41,
-        "cebolla": 65,
-        "tomate": 34,
-        "ajo": 52,
-        "roquefort": 53,
-        "aceitunas": 54,
-        "tapas_empanada": 66,
-        "carne": 65,
-        "jamon_queso": 69,
-        "pollo": 46,
-        "verdura": 67,
-        "humita": 54,
-        "gaseosa": 53,
-        "agua": 45
+        "harina": 47,
+        "salsa": 49,
+        "mozzarella": 59,
+        "jamon": 34,
+        "morron": 40,
+        "cebolla": 36,
+        "tomate": 43,
+        "ajo": 45,
+        "roquefort": 45,
+        "aceitunas": 69,
+        "tapas_empanada": 52,
+        "carne": 31,
+        "jamon_queso": 36,
+        "pollo": 40,
+        "verdura": 43,
+        "humita": 68,
+        "gaseosa": 65,
+        "agua": 47
     },
     "ventas": [],
-    "pedidos": []
+    "pedidos": [
+        {
+            "pedido_id": 2,
+            "cliente": "Santiago",
+            "estado": "pendiente",
+            "tipo_entrega": "Delivery",
+            "direccion": "Bolivar5852",
+            "fecha": "2026-06-24T01:18:21.193132",
+            "subtotal": 42000.0,
+            "descuento": 5040.0,
+            "total": 36960.0,
+            "cocinero_asignado": "",
+            "estacion_cocina": "",
+            "tiempo_estimado": 0,
+            "tiempo_restante": 0,
+            "inicio_preparacion": "",
+            "fin_preparacion": "",
+            "motivo_cancelacion": "",
+            "productos": [
+                {
+                    "nombre": "Pizza anana",
+                    "cantidad": 3
+                }
+            ]
+        }
+    ]
 }

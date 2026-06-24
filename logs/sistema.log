@@ -114,3 +114,19 @@
 [2026-06-24 01:00:55] OK - generar_reporte_stock
 [2026-06-24 01:00:56] OK - consultar_dolar_oficial
 [2026-06-24 01:02:15] OK - consultar_dolar_oficial
+[2026-06-24 01:15:01] OK - consultar_dolar_oficial
+[2026-06-24 01:15:15] OK - generar_reporte_ventas
+[2026-06-24 01:15:15] OK - generar_reporte_stock
+[2026-06-24 01:15:18] OK - consultar_dolar_oficial
+[2026-06-24 01:15:20] OK - generar_reporte_ventas
+[2026-06-24 01:15:20] OK - generar_reporte_stock
+[2026-06-24 01:15:21] OK - generar_reporte_ventas
+[2026-06-24 01:15:21] OK - generar_reporte_stock
+[2026-06-24 01:15:28] OK - cargar_datos
+[2026-06-24 01:15:28] OK - generar_reporte_ventas
+[2026-06-24 01:15:28] OK - generar_reporte_stock
+[2026-06-24 01:16:31] OK - consultar_dolar_oficial
+[2026-06-24 01:16:42] OK - consultar_dolar_oficial
+[2026-06-24 01:18:09] ERROR - crear_pedido: El campo 'cliente' no puede estar vacío.
+[2026-06-24 01:18:21] OK - crear_pedido
+[2026-06-24 01:18:23] OK - generar_ticket_pdf
