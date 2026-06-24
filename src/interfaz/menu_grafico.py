@@ -557,12 +557,12 @@ class PizzeriaApp(tk.Tk):
         tabla.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
 
         for columna in columnas:
-            tabla.heading(columna, text=encabezados.get(columna, columna))
+            tabla.heading(columna, text=encabezados.get(columna, columna), anchor="center")
             tabla.column(
                 columna,
                 width=(anchos or {}).get(columna, 130),
                 minwidth=80,
-                anchor="w",
+                anchor="center",
                 stretch=True,
             )
 

@@ -1,5 +1,5 @@
 {
-    "dinero": 17188,
+    "dinero": 51120.439999999995,
     "catalogo": [
         {
             "nombre": "Pizza muzzarella",
@@ -96,60 +96,116 @@
             "precio_base": 1490.0,
             "tipo": "Bebida",
             "ingrediente_stock": "agua"
-        },
-        {
-            "nombre": "Pizza anana",
-            "precio_base": 10000.0,
-            "tipo": "Pizza",
-            "tamanio": "grande",
-            "ingredientes_extra": {
-                "jamon crudo": 2
-            }
         }
     ],
     "stock": {
-        "harina": 47,
-        "salsa": 49,
-        "mozzarella": 59,
-        "jamon": 34,
-        "morron": 40,
-        "cebolla": 36,
-        "tomate": 43,
-        "ajo": 45,
-        "roquefort": 45,
-        "aceitunas": 69,
-        "tapas_empanada": 52,
-        "carne": 31,
-        "jamon_queso": 36,
-        "pollo": 40,
+        "harina": 61,
+        "salsa": 37,
+        "mozzarella": 42,
+        "jamon": 57,
+        "morron": 57,
+        "cebolla": 38,
+        "tomate": 39,
+        "ajo": 37,
+        "roquefort": 31,
+        "aceitunas": 56,
+        "tapas_empanada": 51,
+        "carne": 49,
+        "jamon_queso": 49,
+        "pollo": 32,
         "verdura": 43,
-        "humita": 68,
-        "gaseosa": 65,
-        "agua": 47
+        "humita": 50,
+        "gaseosa": 66,
+        "agua": 32
     },
-    "ventas": [],
+    "ventas": [
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-24T02:00:01.348841",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de verdura",
+            "cantidad": 6,
+            "precio_unitario": 1117.0,
+            "subtotal_bruto": 6702.0,
+            "descuento": 1005.3,
+            "subtotal": 5696.7
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-24T02:00:01.348841",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de jamón y queso",
+            "cantidad": 6,
+            "precio_unitario": 1192.0,
+            "subtotal_bruto": 7152.0,
+            "descuento": 1072.8,
+            "subtotal": 6079.2
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-24T02:00:01.348841",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Pizza napolitana",
+            "cantidad": 2,
+            "precio_unitario": 12933.199999999999,
+            "subtotal_bruto": 25866.399999999998,
+            "descuento": 3879.9599999999996,
+            "subtotal": 21986.44
+        },
+        {
+            "pedido_id": 1,
+            "fecha": "2026-06-24T02:00:01.348841",
+            "cliente": "Santiago",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Gaseosa",
+            "cantidad": 2,
+            "precio_unitario": 2533.0,
+            "subtotal_bruto": 5066.0,
+            "descuento": 759.9,
+            "subtotal": 4306.1
+        }
+    ],
     "pedidos": [
         {
-            "pedido_id": 2,
+            "pedido_id": 1,
             "cliente": "Santiago",
-            "estado": "pendiente",
-            "tipo_entrega": "Delivery",
-            "direccion": "Bolivar5852",
-            "fecha": "2026-06-24T01:18:21.193132",
-            "subtotal": 42000.0,
-            "descuento": 5040.0,
-            "total": 36960.0,
-            "cocinero_asignado": "",
-            "estacion_cocina": "",
-            "tiempo_estimado": 0,
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T02:00:01.348841",
+            "subtotal": 44786.399999999994,
+            "descuento": 6717.959999999999,
+            "total": 38068.439999999995,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Mixta: Empanadas, Horno, Bebidas",
+            "tiempo_estimado": 38,
             "tiempo_restante": 0,
-            "inicio_preparacion": "",
-            "fin_preparacion": "",
+            "inicio_preparacion": "2026-06-24T02:00:07.257461",
+            "fin_preparacion": "2026-06-24T02:00:11.828109",
             "motivo_cancelacion": "",
             "productos": [
                 {
-                    "nombre": "Pizza anana",
-                    "cantidad": 3
+                    "nombre": "Empanada de verdura",
+                    "cantidad": 6
+                },
+                {
+                    "nombre": "Empanada de jamón y queso",
+                    "cantidad": 6
+                },
+                {
+                    "nombre": "Pizza napolitana",
+                    "cantidad": 2
+                },
+                {
+                    "nombre": "Gaseosa",
+                    "cantidad": 2
                 }
             ]
         }

@@ -2,7 +2,7 @@
     "administrador": {
         "nombre": "Administrador",
         "rol": "Administrador",
-        "contrasenia": "admin123"
+        "contrasenia": "ADMIN"
     },
     "empleado": {
         "nombre": "Empleado",
