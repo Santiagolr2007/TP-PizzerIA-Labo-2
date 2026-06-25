@@ -50,6 +50,8 @@ PROMOCIONES = (
 
 
 def _categoria(producto):
+    # Traduce la clase real del producto a una categoria de negocio.
+    # Las promociones trabajan con estas categorias simples y no con nombres de clases.
     if isinstance(producto, Pizza):
         return "pizzas"
     if isinstance(producto, Empanada):
@@ -78,6 +80,8 @@ def _obtener_lineas(productos):
 
 
 def _contar_categorias(lineas):
+    # Suma cuantas unidades hay de cada categoria dentro del pedido normalizado.
+    # Este conteo permite saber si el pedido alcanza los minimos de una promocion.
     cantidades = {"pizzas": 0, "empanadas": 0, "bebidas": 0}
     for linea in lineas:
         categoria = linea["categoria"]
@@ -87,6 +91,8 @@ def _contar_categorias(lineas):
 
 
 def _cumple_requisitos(cantidades, requisitos):
+    # Recorre los requisitos de una promocion y corta apenas falta una categoria.
+    # Asi los combos no se aplican de forma parcial por error.
     for categoria, minimo in requisitos.items():
         if cantidades.get(categoria, 0) < minimo:
             return False
@@ -94,11 +100,15 @@ def _cumple_requisitos(cantidades, requisitos):
 
 
 def _lineas_promocion(lineas, requisitos):
+    # Devuelve solamente las lineas del pedido afectadas por la promo.
+    # Por ejemplo, una promo de empanadas no debe descontar bebidas.
     categorias = [categoria for categoria, minimo in requisitos.items() if minimo > 0]
     return [linea for linea in lineas if linea["categoria"] in categorias]
 
 
 def _calcular_descuentos_y_promos(productos):
+    # Motor central de promociones: normaliza el pedido, revisa cada promo posible
+    # y guarda el mejor descuento por linea para evitar acumulaciones duplicadas.
     lineas = _obtener_lineas(productos)
     cantidades = _contar_categorias(lineas)
     descuentos = {}
@@ -121,11 +131,15 @@ def _calcular_descuentos_y_promos(productos):
 
 
 def calcular_descuentos_por_linea(productos):
+    # Funcion pensada para el detalle del pedido: devuelve el descuento por indice
+    # de producto y permite calcular totales linea por linea.
     _lineas, descuentos, _promociones = _calcular_descuentos_y_promos(productos)
     return descuentos
 
 
 def calcular_promociones_pedido(productos):
+    # Funcion pensada para mostrar informacion visible: agrupa descuentos por promo
+    # para que el ticket y la interfaz tengan un resumen claro.
     lineas, descuentos, promociones_por_linea = _calcular_descuentos_y_promos(productos)
     resumen = {}
 

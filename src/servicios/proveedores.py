@@ -6,9 +6,13 @@ from src.utils.excepciones import ProveedorNoDisponibleError
 @registrar_log
 @reintentar(intentos=3,espera=1,excepciones=(requests.RequestException, ProveedorNoDisponibleError),) #reintenta 3 veces usando el decorador
 def consultar_dolar_oficial():
+    # Consulta la cotizacion oficial de venta en dolarapi.
+    # Si hay errores de red o servidor, el decorador reintenta antes de fallar.
     url = "https://dolarapi.com/v1/dolares/oficial"
     respuesta = requests.get(url, timeout=3) #consulta la url
 
+    # Se convierten errores HTTP importantes en una excepcion propia del proyecto.
+    # Esto hace que inicializacion pueda usar el valor de respaldo sin depender de requests.
     if respuesta.status_code == 404:
         raise ProveedorNoDisponibleError("El recurso solicitado no existe.")
 
@@ -18,6 +22,7 @@ def consultar_dolar_oficial():
     respuesta.raise_for_status()
     datos = respuesta.json()
 
+    # La API devuelve varios campos; para precios se toma el valor de venta.
     valor_venta = datos.get("venta") #Tomamos el precio del dolar oficial a la venta
     if valor_venta is None:
         raise ProveedorNoDisponibleError("La respuesta no contiene el valor de venta.")

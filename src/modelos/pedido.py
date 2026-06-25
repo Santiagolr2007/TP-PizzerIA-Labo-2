@@ -6,9 +6,12 @@ from src.utils.validaciones import validar_entero_positivo, validar_texto
 
 
 class Pedido:
+    # Contador compartido por todos los pedidos para asignar IDs consecutivos.
     _contador = 0
 
     def __init__(self, cliente, tipo_entrega="Retiro", direccion=""):
+        # Al crear un pedido se guardan sus datos comerciales y tambien
+        # campos que luego completa cocina: cocinero, estacion y tiempos.
         Pedido._contador += 1
         self.pedido_id = Pedido._contador
         self.cliente = validar_texto(cliente, "cliente")
@@ -30,6 +33,8 @@ class Pedido:
         return self.__estado
 
     def _validar_tipo_entrega(self, tipo_entrega):
+        # Internamente se guardan solo dos valores posibles: Retiro o Delivery.
+        # Esto simplifica filtros, reportes y validaciones posteriores.
         texto = validar_texto(tipo_entrega, "tipo de entrega").strip().lower()
         if texto == "delivery":
             return "Delivery"
@@ -38,22 +43,27 @@ class Pedido:
         raise ValueError("El tipo de entrega debe ser Retiro o Delivery.")
 
     def _validar_direccion(self, direccion):
+        # La direccion solo es obligatoria para delivery; en retiro puede quedar vacia.
         texto = str(direccion).strip()
         if self.tipo_entrega == "Delivery" and not texto:
             raise ValueError("La direccion es obligatoria para pedidos con delivery.")
         return texto
 
     def agregar_producto(self, producto, cantidad):
+        # Cada linea del pedido guarda el objeto producto y la cantidad pedida.
         cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
         self.productos.append((producto, cantidad_validada))
 
     def calcular_subtotal(self):
+        # Suma precios antes de aplicar promociones o descuentos.
         total = 0
         for producto, cantidad in self.productos:
             total += producto.calcular_precio() * cantidad
         return total
 
     def obtener_promociones(self):
+        # La logica de promociones esta separada en servicios/promociones.py
+        # para que el pedido no tenga que conocer cada regla comercial.
         return calcular_promociones_pedido(self.productos)
 
     def calcular_descuento_total(self):
@@ -63,6 +73,8 @@ class Pedido:
         return descuento_total
 
     def calcular_total(self):
+        # max(0, total) evita totales negativos si en el futuro se agregan
+        # descuentos fuertes o promociones especiales.
         total = self.calcular_subtotal() - self.calcular_descuento_total()
         return max(0, total)
 
@@ -87,6 +99,8 @@ class Pedido:
             }
 
     def obtener_ingredientes_totales(self):
+        # Cocina necesita saber el total de ingredientes de todo el pedido
+        # antes de descontar stock.
         if not self.productos:
             raise PedidoInvalidoError("El pedido no contiene productos.")
 
@@ -99,6 +113,8 @@ class Pedido:
         return ingredientes
 
     def cambiar_estado(self, nuevo_estado):
+        # Maquina de estados del pedido. Define que cambios son validos
+        # y bloquea saltos incoherentes, por ejemplo pendiente -> entregado.
         estado_normalizado = self._normalizar_estado(nuevo_estado)
         transiciones = {
             "pendiente": {"en preparacion", "cancelado"},
@@ -116,6 +132,8 @@ class Pedido:
         self.__estado = estado_normalizado
 
     def asignar_cocina(self, cocinero, estacion, tiempo_estimado):
+        # Cuando un hilo de cocina toma el pedido, deja registrada
+        # la estacion, el cocinero y el tiempo estimado de preparacion.
         self.cocinero_asignado = validar_texto(cocinero, "cocinero")
         self.estacion_cocina = validar_texto(estacion, "estacion")
         self.tiempo_estimado = int(tiempo_estimado)
@@ -126,6 +144,8 @@ class Pedido:
         self.tiempo_restante = max(0, int(tiempo_restante))
 
     def finalizar_cocina(self):
+        # Marca el fin operativo de cocina. El pedido luego queda "listo"
+        # y espera retiro o salida a delivery.
         self.tiempo_restante = 0
         self.fin_preparacion = datetime.now().isoformat()
 
@@ -133,6 +153,8 @@ class Pedido:
         self.motivo_cancelacion = str(motivo)
 
     def _normalizar_estado(self, estado):
+        # Acepta variantes escritas con o sin tilde para que el sistema
+        # no falle al cargar datos viejos o textos ingresados manualmente.
         texto = validar_texto(estado, "estado").strip().lower()
         equivalencias = {
             "en preparacion": "en preparacion",
@@ -165,6 +187,8 @@ class Pedido:
 
     @classmethod
     def desde_dict(cls, datos, catalogo):
+        # Reconstruye un pedido desde JSON. Usa el catalogo cargado para volver
+        # a convertir nombres de productos en objetos Pizza/Empanada/Bebida.
         pedido = cls(
             datos["cliente"],
             datos.get("tipo_entrega", "Retiro"),
@@ -200,6 +224,8 @@ class Pedido:
         return pedido
 
     def to_dict(self):
+        # Convierte el pedido a un diccionario serializable.
+        # Los productos se guardan por nombre para no escribir objetos en JSON.
         productos_convertidos = []
         for producto, cantidad in self.productos:
             productos_convertidos.append({"nombre": producto.nombre, "cantidad": cantidad})

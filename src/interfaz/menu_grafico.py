@@ -37,7 +37,11 @@ from src.servicios.usuarios import cambiar_contrasenia, validar_usuario
 from src.utils.excepciones import PizzeriaError
 
 class PizzeriaApp(tk.Tk):
+    # Ventana principal de la aplicacion.
+    # Coordina la interfaz, llama a los servicios y mantiene el usuario activo.
     def __init__(self):
+        # Inicializa estado visual, sistema de negocio, variables observables
+        # y obliga al login antes de mostrar las funciones principales.
         super().__init__()
         self.colors = {
             "bg": "#FFF7ED",
@@ -90,6 +94,8 @@ class PizzeriaApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._cerrar_aplicacion)
 
     def _configurar_estilos(self):
+        # Define estilos globales de ttk para que todas las tablas, pestanias
+        # y controles compartan una apariencia moderna y coherente.
         estilo = ttk.Style(self)
         try:
             estilo.theme_use("clam")
@@ -129,6 +135,8 @@ class PizzeriaApp(tk.Tk):
         estilo.configure("TSpinbox", padding=8)
 
     def _calcular_geometria_adaptada(self, ancho, alto, min_ancho, min_alto, margen=80):
+        # Calcula tamanios seguros para que ventanas y dialogos entren en pantalla.
+        # Tambien centra la ventana final respetando un margen respecto del monitor.
         pantalla_ancho = self.winfo_screenwidth()
         pantalla_alto = self.winfo_screenheight()
         max_ancho = max(360, pantalla_ancho - margen)
@@ -142,6 +150,7 @@ class PizzeriaApp(tk.Tk):
         return ancho_final, alto_final, min_ancho_final, min_alto_final, x, y
 
     def _configurar_ventana_principal(self):
+        # Aplica la geometria responsive de la ventana principal.
         ancho, alto, min_ancho, min_alto, x, y = self._calcular_geometria_adaptada(
             1180,
             720,
@@ -153,6 +162,8 @@ class PizzeriaApp(tk.Tk):
         self.minsize(min_ancho, min_alto)
 
     def _configurar_dialogo(self, ventana, ancho, alto, min_ancho, min_alto):
+        # Configuracion comun de todos los dialogos: tamanio inicial, minimo,
+        # redimensionamiento y ajuste automatico al contenido real.
         ancho, alto, min_ancho, min_alto, x, y = self._calcular_geometria_adaptada(
             ancho,
             alto,
@@ -166,6 +177,8 @@ class PizzeriaApp(tk.Tk):
         ventana.after_idle(lambda ventana=ventana: self._ajustar_dialogo_a_contenido(ventana))
 
     def _ajustar_dialogo_a_contenido(self, ventana, margen=60):
+        # Despues de crear widgets, Tkinter conoce el tamanio requerido.
+        # Esta funcion agranda el dialogo si hace falta, sin pasarse de pantalla.
         if not ventana.winfo_exists():
             return
 
@@ -218,6 +231,8 @@ class PizzeriaApp(tk.Tk):
         return interior
 
     def _crear_layout(self):
+        # Construye la estructura base: sidebar, encabezado, cajas de estado
+        # y contenedor central donde se reemplazan las vistas.
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -355,6 +370,7 @@ class PizzeriaApp(tk.Tk):
         estado.grid(row=2, column=0, sticky="ew", padx=28, pady=(0, 10))
 
     def _crear_boton_sidebar(self, texto, comando):
+        # Crea botones de navegacion con el mismo estilo y comportamiento visual.
         boton = tk.Button(
             self.sidebar,
             text=texto,
@@ -374,6 +390,7 @@ class PizzeriaApp(tk.Tk):
         return boton
 
     def _seleccionar_nav(self, clave):
+        # Marca visualmente la seccion activa y respeta permisos por rol.
         for clave_boton, boton in self.nav_buttons.items():
             if not self._puede_acceder(clave_boton):
                 boton.configure(state="disabled", bg=self.colors["sidebar"], fg="#6B7280")
@@ -386,10 +403,12 @@ class PizzeriaApp(tk.Tk):
             )
 
     def _limpiar_contenido(self):
+        # Borra la vista actual antes de dibujar otra pantalla.
         for widget in self.content.winfo_children():
             widget.destroy()
 
     def _refrescar_caja(self):
+        # El administrador ve dinero disponible; el empleado ve su rol activo.
         if self._es_administrador():
             self.money_label_text.set("Caja disponible")
             self.money_text.set(formato_moneda(self.pizzeria.obtener_dinero()))
@@ -400,27 +419,33 @@ class PizzeriaApp(tk.Tk):
         self.money_text.set(rol)
 
     def _refrescar_dolar_referencia(self):
+        # Actualiza el recuadro del dolar con el valor consultado o de respaldo.
         valor = obtener_dolar_referencia()
         self.dolar_text.set(formato_moneda(valor))
 
     def _set_status(self, texto):
+        # Mensaje breve de estado para confirmar acciones sin abrir ventanas extra.
         self.status_text.set(texto)
 
     def _es_administrador(self):
+        # Centraliza la comprobacion de permisos de administrador.
         return bool(self.usuario_actual and self.usuario_actual.get("rol") == "Administrador")
 
     def _puede_acceder(self, vista):
+        # Define las secciones disponibles para cada rol.
         if self._es_administrador():
             return True
         return vista in {"panel", "pedidos", "cocina", "stock"}
 
     def _requiere_admin(self, accion="realizar esta acción"):
+        # Guardia reutilizable para botones que modifican datos sensibles.
         if self._es_administrador():
             return True
         messagebox.showwarning("Permiso requerido", f"Solo el administrador puede {accion}.")
         return False
 
     def _actualizar_permisos_nav(self):
+        # Habilita o deshabilita navegacion y acciones laterales segun el rol.
         for clave, boton in self.nav_buttons.items():
             if self._puede_acceder(clave):
                 boton.configure(state="normal")
@@ -433,6 +458,8 @@ class PizzeriaApp(tk.Tk):
                 boton.configure(state="disabled", fg="#6B7280")
 
     def _mostrar_login(self):
+        # Dialogo modal de ingreso. Hasta que no hay usuario valido,
+        # la ventana principal no queda disponible.
         ventana = tk.Toplevel(self)
         ventana.title("Iniciar sesión")
         ventana.configure(bg=self.colors["bg"])
@@ -502,6 +529,7 @@ class PizzeriaApp(tk.Tk):
         self.wait_window(ventana)
 
     def cambiar_usuario(self):
+        # Vuelve a pedir credenciales y refresca permisos segun el nuevo rol.
         self._mostrar_login()
         if self.usuario_actual is None:
             return
@@ -512,6 +540,8 @@ class PizzeriaApp(tk.Tk):
             self._refrescar_vista_actual()
 
     def _boton_accion(self, parent, texto, comando, variante="principal"):
+        # Fabrica botones de accion reutilizables con variantes visuales
+        # para acciones principales, secundarias y peligrosas.
         colores = {
             "principal": (self.colors["accent"], "#FFFFFF", self.colors["accent_dark"]),
             "secundario": (self.colors["surface"], self.colors["text"], "#F9FAFB"),
@@ -538,6 +568,8 @@ class PizzeriaApp(tk.Tk):
         )
 
     def _crear_seccion(self, parent, titulo, subtitulo=None):
+        # Crea un bloque visual con titulo y contenido.
+        # Se reutiliza para que todas las vistas mantengan la misma estructura.
         marco = tk.Frame(
             parent,
             bg=self.colors["surface"],
@@ -568,6 +600,8 @@ class PizzeriaApp(tk.Tk):
         return marco, cuerpo
 
     def _crear_tabla(self, parent, columnas, encabezados, anchos=None, alto=12):
+        # Configura una tabla Treeview usando claves internas y encabezados visibles.
+        # Asi el usuario ve textos claros aunque el codigo use nombres tecnicos.
         # columnas usa claves internas estables; encabezados define el texto prolijo que ve el usuario.
         contenedor = tk.Frame(parent, bg=self.colors["surface"])
         contenedor.grid_columnconfigure(0, weight=1)
@@ -593,6 +627,8 @@ class PizzeriaApp(tk.Tk):
         return contenedor, tabla
 
     def _llenar_tabla(self, tabla, columnas, filas, tag_fn=None):
+        # Limpia y vuelve a insertar filas en una tabla.
+        # tag_fn permite colorear estados sin duplicar logica en cada vista.
         for item in tabla.get_children():
             tabla.delete(item)
 
@@ -605,6 +641,8 @@ class PizzeriaApp(tk.Tk):
             tabla.insert("", "end", values=valores, tags=tags)
 
     def mostrar_panel(self):
+        # Pantalla inicial con metricas del negocio, graficos simples
+        # y accesos directos a las acciones mas usadas.
         self.current_view = "panel"
         self._seleccionar_nav("panel")
         self.page_title.set("Panel")
@@ -730,6 +768,7 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla_stock, columnas_stock, filas_stock_bajo, lambda _fila: "bajo")
 
     def _tarjeta_metrica(self, parent, titulo, valor, detalle, color):
+        # Tarjeta compacta para numeros importantes del panel.
         marco = tk.Frame(
             parent,
             bg=self.colors["surface"],
@@ -764,6 +803,8 @@ class PizzeriaApp(tk.Tk):
         return marco
 
     def mostrar_catalogo(self):
+        # Vista de administracion del catalogo: buscar, agregar, editar y eliminar.
+        # Las acciones de modificacion quedan reservadas al administrador.
         if not self._requiere_admin("administrar el catálogo"):
             self.mostrar_panel()
             return
@@ -806,6 +847,7 @@ class PizzeriaApp(tk.Tk):
         renderizar()
 
     def _producto_desde_tabla_catalogo(self, tabla):
+        # Recupera el producto real seleccionado usando el nombre visible de la tabla.
         seleccion = tabla.selection()
         if not seleccion:
             messagebox.showwarning("Producto requerido", "Selecciona un producto del catálogo.")
@@ -822,11 +864,13 @@ class PizzeriaApp(tk.Tk):
             return None
 
     def editar_producto_desde_tabla(self, tabla):
+        # Abre el formulario de producto con los datos cargados del producto elegido.
         producto = self._producto_desde_tabla_catalogo(tabla)
         if producto is not None:
             self.abrir_dialogo_producto(producto)
 
     def eliminar_producto_desde_tabla(self, tabla):
+        # Elimina un producto del catalogo solo despues de confirmar seleccion.
         producto = self._producto_desde_tabla_catalogo(tabla)
         if producto is None:
             return
@@ -844,6 +888,8 @@ class PizzeriaApp(tk.Tk):
         self.mostrar_catalogo()
 
     def abrir_dialogo_producto(self, producto=None):
+        # Formulario unico para crear o editar pizzas, empanadas y bebidas.
+        # Cambia campos visibles segun el tipo seleccionado.
         if not self._requiere_admin("gestionar productos"):
             return
 
@@ -993,6 +1039,8 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Guardar", guardar, "principal").pack(side="right")
 
     def mostrar_pedidos(self):
+        # Vista operativa de pedidos: permite cargar, avanzar estados,
+        # cancelar, ver ticket y exportar comprobantes.
         self.current_view = "pedidos"
         self._seleccionar_nav("pedidos")
         self.page_title.set("Pedidos")
@@ -1044,6 +1092,7 @@ class PizzeriaApp(tk.Tk):
         tabla.bind("<Double-1>", lambda _evento: self._abrir_ticket_desde_tabla(tabla))
 
     def _configurar_tags_pedidos(self, tabla):
+        # Define colores de texto para reconocer rapidamente el estado del pedido.
         tabla.tag_configure("pendiente", foreground=self.colors["accent"])
         tabla.tag_configure("en preparacion", foreground=self.colors["info"])
         tabla.tag_configure("listo", foreground=self.colors["success"])
@@ -1052,6 +1101,7 @@ class PizzeriaApp(tk.Tk):
         tabla.tag_configure("cancelado", foreground=self.colors["danger"])
 
     def _tag_pedido(self, fila):
+        # Devuelve el tag visual asociado al estado visible de una fila.
         estado = str(fila.get("estado", "")).lower()
         estado = {
             "en preparación": "en preparacion",
@@ -1061,6 +1111,8 @@ class PizzeriaApp(tk.Tk):
         return ""
 
     def mostrar_cocina(self):
+        # Vista de produccion: muestra pedidos activos, estaciones y eventos
+        # que llegan desde el procesamiento con hilos.
         self.current_view = "cocina"
         self._seleccionar_nav("cocina")
         self.page_title.set("Cocina")
@@ -1137,6 +1189,8 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla_eventos, columnas_eventos, filas_eventos_cocina(self.cocina_eventos))
 
     def mostrar_stock(self):
+        # Vista de inventario: el empleado puede consultar y el administrador
+        # puede reponer ingredientes.
         self.current_view = "stock"
         self._seleccionar_nav("stock")
         self.page_title.set("Stock")
@@ -1186,6 +1240,8 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla, columnas, filas_stock(self.pizzeria), lambda fila: "bajo" if fila["estado"] == "Reponer" else "")
 
     def mostrar_reportes(self):
+        # Vista administrativa de reportes y graficos.
+        # Antes de mostrar datos sincroniza pedidos entregados con ventas.
         if not self._requiere_admin("ver reportes e historial de ventas"):
             self.mostrar_panel()
             return
@@ -1217,6 +1273,7 @@ class PizzeriaApp(tk.Tk):
         self._agregar_tab_reporte(notebook, "Stock", "reporte_stock.xlsx")
 
     def _agregar_tab_graficos(self, notebook):
+        # Pestaña con graficos simples hechos en Canvas para evitar dependencias pesadas.
         tab = tk.Frame(notebook, bg=self.colors["bg"])
         notebook.add(tab, text="Gráficos")
         tab.grid_columnconfigure(0, weight=1)
@@ -1228,7 +1285,7 @@ class PizzeriaApp(tk.Tk):
             ("Pedidos por estado", datos_grafico_estados(self.pizzeria), self.colors["info"], 0, 0),
             ("Ventas por producto", datos_grafico_productos(self.pizzeria), self.colors["accent"], 0, 1),
             ("Stock mas bajo", datos_grafico_stock_bajo(self.pizzeria), self.colors["danger"], 1, 0),
-            ("Descuentos por promocion", datos_grafico_descuentos(self.pizzeria), self.colors["success"], 1, 1),
+            ("Promociones usadas", datos_grafico_descuentos(self.pizzeria), self.colors["success"], 1, 1),
         ]
 
         for titulo, datos, color, fila, columna in graficos:
@@ -1237,6 +1294,8 @@ class PizzeriaApp(tk.Tk):
             self._dibujar_grafico_barras(cuerpo, datos, color)
 
     def _dibujar_grafico_barras(self, parent, datos, color):
+        # Dibuja barras horizontales proporcionales al valor maximo recibido.
+        # Si no hay datos, muestra un mensaje vacio pero prolijo.
         canvas = tk.Canvas(parent, bg=self.colors["surface"], highlightthickness=0, height=210)
         canvas.pack(fill="both", expand=True)
 
@@ -1305,6 +1364,8 @@ class PizzeriaApp(tk.Tk):
         self.after(120, dibujar)
 
     def _agregar_tab_reporte(self, notebook, titulo, archivo):
+        # Muestra dentro de la app el contenido del Excel ya generado.
+        # Permite revisar reportes sin abrir otro programa.
         tab = tk.Frame(notebook, bg=self.colors["surface"])
         notebook.add(tab, text=titulo)
         try:
@@ -1351,6 +1412,8 @@ class PizzeriaApp(tk.Tk):
         self._llenar_tabla(tabla, columnas, filas_formateadas)
 
     def mostrar_herramientas(self):
+        # Seccion de acciones administrativas: respaldos, reportes,
+        # proveedor externo y cambio de contrasenias.
         if not self._requiere_admin("abrir herramientas administrativas"):
             self.mostrar_panel()
             return
@@ -1399,6 +1462,8 @@ class PizzeriaApp(tk.Tk):
             tk.Label(fila, text=str(valor), bg=self.colors["surface"], fg=self.colors["text"], font=("Segoe UI", 10, "bold")).pack(side="right")
 
     def abrir_dialogo_contrasenias(self):
+        # Permite al administrador actualizar contrasenias de usuarios del sistema.
+        # Los cambios se guardan en respaldo/usuarios_sistema.json.
         if not self._requiere_admin("cambiar contraseñas"):
             return
 
@@ -1464,6 +1529,8 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Guardar cambio", guardar, "principal").pack(side="right")
 
     def abrir_dialogo_pedido(self):
+        # Flujo completo de venta: cliente, entrega, productos, promociones,
+        # total en vivo y creacion final del pedido.
         ventana = tk.Toplevel(self)
         ventana.title("Nuevo pedido")
         ventana.configure(bg=self.colors["bg"])
@@ -1682,6 +1749,8 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Confirmar pedido", confirmar, "principal").pack(side="right")
 
     def abrir_dialogo_reponer_stock(self):
+        # Formulario de reposicion manual de inventario.
+        # Solo administradores pueden sumar stock y afectar la caja.
         if not self._requiere_admin("reponer stock"):
             return
 
@@ -1747,6 +1816,7 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Confirmar", confirmar, "principal").pack(side="right")
 
     def _mostrar_ticket(self, pedido):
+        # Muestra el comprobante en una ventana de texto antes de exportarlo a PDF.
         ventana = tk.Toplevel(self)
         ventana.title(f"Ticket pedido #{pedido.pedido_id}")
         ventana.configure(bg=self.colors["bg"])
@@ -1835,6 +1905,7 @@ class PizzeriaApp(tk.Tk):
         self._boton_accion(pie, "Exportar PDF", lambda: self.exportar_ticket_pdf(pedido, ventana), "principal").pack(side="right")
 
     def exportar_ticket_pdf(self, pedido, parent=None):
+        # Genera un archivo PDF numerado para el pedido indicado.
         try:
             ruta = generar_ticket_pdf(pedido)
         except Exception as error:
@@ -1845,16 +1916,19 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Ticket PDF", f"Ticket generado en:\n{ruta}", parent=parent or self)
 
     def exportar_ticket_desde_tabla(self, tabla):
+        # Atajo desde una tabla: obtiene el pedido seleccionado y exporta su ticket.
         pedido = self._pedido_desde_tabla(tabla)
         if pedido is not None:
             self.exportar_ticket_pdf(pedido)
 
     def _abrir_ticket_desde_tabla(self, tabla):
+        # Atajo desde doble click: obtiene el pedido seleccionado y abre su ticket.
         pedido = self._pedido_desde_tabla(tabla, mostrar_error=False)
         if pedido is not None:
             self._mostrar_ticket(pedido)
 
     def _pedido_desde_tabla(self, tabla, mostrar_error=True):
+        # Resuelve el objeto Pedido real a partir del ID visible en la tabla.
         seleccion = tabla.selection()
         if not seleccion:
             if mostrar_error:
@@ -1873,6 +1947,7 @@ class PizzeriaApp(tk.Tk):
             return None
 
     def avanzar_pedido_desde_tabla(self, tabla):
+        # Avanza el estado del pedido respetando las reglas del modelo.
         pedido = self._pedido_desde_tabla(tabla)
         if pedido is None:
             return
@@ -1887,6 +1962,7 @@ class PizzeriaApp(tk.Tk):
         self._refrescar_vista_actual()
 
     def cancelar_pedido_desde_tabla(self, tabla):
+        # Cancela un pedido seleccionado luego de confirmar la accion.
         pedido = self._pedido_desde_tabla(tabla)
         if pedido is None:
             return
@@ -1904,6 +1980,8 @@ class PizzeriaApp(tk.Tk):
         self._refrescar_vista_actual()
 
     def _registrar_evento_cocina(self, evento):
+        # Recibe eventos desde los hilos de cocina.
+        # Ignora los eventos de progreso para no refrescar la interfaz cada minuto.
         if evento.get("tipo") == "progreso":
             return
 
@@ -1915,6 +1993,8 @@ class PizzeriaApp(tk.Tk):
             self._refrescar_vista_actual()
 
     def procesar_cocina(self):
+        # Lanza la preparacion de pedidos en segundo plano para no congelar Tkinter.
+        # Al finalizar, vuelve al hilo principal con after().
         if self.busy:
             return
 
@@ -1953,6 +2033,7 @@ class PizzeriaApp(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _finalizar_cocina(self, antes, despues, error):
+        # Cierra el estado ocupado, actualiza caja y muestra resultado de la cocina.
         self.busy = False
         if error:
             self._set_status(f"Error al procesar cocina: {error}")
@@ -1969,6 +2050,7 @@ class PizzeriaApp(tk.Tk):
         )
 
     def guardar_respaldo(self):
+        # Guarda todo el estado importante del negocio en JSON.
         if not self._requiere_admin("guardar respaldos"):
             return
 
@@ -1985,6 +2067,7 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Respaldo", f"Respaldo guardado en:\n{ruta}")
 
     def cargar_respaldo(self):
+        # Restaura pedidos, ventas, catalogo, stock y caja desde el respaldo JSON.
         if not self._requiere_admin("cargar respaldos"):
             return
 
@@ -2002,6 +2085,7 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Respaldo", "Guardado cargado correctamente.")
 
     def consultar_proveedor(self):
+        # Consulta el dolar en un hilo para que la interfaz siga respondiendo.
         if not self._requiere_admin("consultar herramientas administrativas"):
             return
 
@@ -2021,6 +2105,7 @@ class PizzeriaApp(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _mostrar_dolar(self, valor, error):
+        # Muestra el resultado de la consulta del proveedor externo.
         if error:
             self._set_status(f"No se pudo consultar el dólar: {error}")
             messagebox.showerror("Proveedor externo", str(error))
@@ -2031,6 +2116,7 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Proveedor externo", f"Dólar oficial de venta: {formato_moneda(valor)}")
 
     def generar_reportes(self):
+        # Sincroniza ventas entregadas y genera los Excel de ventas y stock.
         if not self._requiere_admin("generar reportes"):
             return
 
@@ -2046,6 +2132,7 @@ class PizzeriaApp(tk.Tk):
         messagebox.showinfo("Reportes", f"Reportes generados:\n{ruta_ventas}\n{ruta_stock}")
 
     def _refrescar_vista_actual(self):
+        # Redibuja la vista actual despues de una accion que cambia datos.
         vistas = {
             "panel": self.mostrar_panel,
             "catalogo": self.mostrar_catalogo,
@@ -2058,12 +2145,14 @@ class PizzeriaApp(tk.Tk):
         vistas.get(self.current_view, self.mostrar_panel)()
 
     def _cerrar_aplicacion(self):
+        # Cierre controlado de la ventana principal.
         if self._es_administrador() and messagebox.askyesno("Salir", "¿Deseas guardar un respaldo antes de salir?"):
             self.guardar_respaldo()
         self.destroy()
 
 
 def ejecutar_menu():
+    # Punto de entrada usado por main.py para abrir la interfaz grafica.
     app = PizzeriaApp()
     if app.winfo_exists():
         app.mainloop()

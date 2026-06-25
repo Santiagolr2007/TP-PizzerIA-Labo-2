@@ -6,12 +6,16 @@ from src.utils.decoradores import medir_tiempo, registrar_log
 
 
 TIEMPOS_PRODUCTO = {
+    # Minutos base por unidad de producto. El total se limita mas abajo
+    # para que la simulacion no se vuelva demasiado larga.
     "Pizza": 6,
     "Empanada": 2,
     "Bebida": 1,
 }
 
 ESTACIONES_PRODUCTO = {
+    # Relaciona cada tipo de producto con una estacion de cocina.
+    # Si un pedido mezcla categorias, se muestra como estacion mixta.
     "Pizza": "Horno",
     "Empanada": "Empanadas",
     "Bebida": "Bebidas",
@@ -19,6 +23,8 @@ ESTACIONES_PRODUCTO = {
 
 
 def calcular_tiempo_estimado(pedido):
+    # Suma el tiempo de cada producto y cantidad del pedido.
+    # El resultado se usa tanto en la interfaz como en los hilos de cocina.
     minutos = 0
 
     for producto, cantidad in pedido.productos:
@@ -29,6 +35,8 @@ def calcular_tiempo_estimado(pedido):
 
 
 def determinar_estaciones_pedido(pedido):
+    # Detecta que sectores de cocina necesita el pedido.
+    # Evita repetir estaciones si hay varios productos del mismo tipo.
     estaciones = []
 
     for producto, _cantidad in pedido.productos:
@@ -44,11 +52,15 @@ def determinar_estaciones_pedido(pedido):
 
 
 def _emitir(callback, evento):
+    # El callback permite que la interfaz reciba eventos sin acoplar
+    # este modulo a Tkinter.
     if callback is not None:
         callback(evento)
 
 
 def _crear_evento(tipo, pedido, mensaje):
+    # Todos los eventos de cocina tienen la misma estructura para que
+    # la interfaz pueda mostrarlos en una tabla.
     return {
         "tipo": tipo,
         "pedido_id": pedido.pedido_id,
@@ -64,6 +76,8 @@ def _crear_evento(tipo, pedido, mensaje):
 
 @registrar_log
 def _cocinero(nombre, cola_pedidos, pizzeria, callback=None, velocidad=0.15):
+    # Cada hilo ejecuta esta funcion. Toma pedidos de una cola compartida
+    # hasta recibir None, que funciona como senial de finalizacion.
     while True:
         pedido = cola_pedidos.get()
 
@@ -71,6 +85,8 @@ def _cocinero(nombre, cola_pedidos, pizzeria, callback=None, velocidad=0.15):
             if pedido is None:
                 return
 
+            # Al tomar un pedido, se asigna estacion/cocinero,
+            # se descuenta stock y se informa el inicio.
             estacion = determinar_estaciones_pedido(pedido)
             tiempo_estimado = calcular_tiempo_estimado(pedido)
             pedido.asignar_cocina(nombre, estacion, tiempo_estimado)
@@ -88,6 +104,8 @@ def _cocinero(nombre, cola_pedidos, pizzeria, callback=None, velocidad=0.15):
             )
 
             for restante in range(tiempo_estimado, 0, -1):
+                # Este bucle simula el paso del tiempo en cocina.
+                # La interfaz no se refresca por cada minuto para evitar parpadeos.
                 pedido.actualizar_tiempo_restante(restante)
                 time.sleep(velocidad)
 
@@ -103,6 +121,8 @@ def _cocinero(nombre, cola_pedidos, pizzeria, callback=None, velocidad=0.15):
             )
 
         except Exception as error:
+            # Si falla el descuento de stock o cualquier paso de cocina,
+            # se intenta cancelar el pedido y emitir un evento explicativo.
             try:
                 if pedido is not None and pedido.estado in {"pendiente", "en preparacion"}:
                     pedido.registrar_cancelacion(error)
@@ -124,6 +144,8 @@ def _cocinero(nombre, cola_pedidos, pizzeria, callback=None, velocidad=0.15):
 
 @medir_tiempo
 def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2, callback=None, velocidad=0.15):
+    # Punto de entrada del procesamiento concurrente:
+    # arma una cola, crea cocineros y reparte los pedidos pendientes.
     pedidos = pizzeria.obtener_pedidos_pendientes()
 
     if not pedidos:
@@ -142,11 +164,13 @@ def procesar_pedidos_con_hilos(pizzeria, cantidad_cocineros=2, callback=None, ve
         hilos.append(hilo)
 
     for pedido in pedidos:
+        # Los pedidos se cargan en la cola y los hilos compiten por tomarlos.
         cola_pedidos.put(pedido)
 
     cola_pedidos.join()
 
     for _hilo in hilos:
+        # Se agrega un None por cada hilo para que todos sepan que deben terminar.
         cola_pedidos.put(None)
 
     cola_pedidos.join()

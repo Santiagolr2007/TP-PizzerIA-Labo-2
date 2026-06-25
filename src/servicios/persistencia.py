@@ -3,6 +3,8 @@ from pathlib import Path
 
 
 def obtener_carpeta_respaldo():
+    # Centraliza la carpeta de respaldos para que todo el sistema guarde datos
+    # en el mismo lugar, aunque el programa se ejecute desde otra carpeta.
     # Obtiene la carpeta principal TP-PizzerIA-Labo-2.
     ruta_proyecto = Path(__file__).resolve().parents[2]
     # Define la carpeta donde se guardarán los archivos JSON y le agrega "respaldo" a la ruta.
@@ -13,6 +15,8 @@ def obtener_carpeta_respaldo():
 
 
 def obtener_ruta_respaldo(ruta):
+    # Acepta tanto rutas absolutas como nombres simples de archivo.
+    # Si llega "respaldo_pizzeria.json", lo ubica dentro de la carpeta respaldo.
     # Convierte la ruta recibida en un objeto Path.
     ruta_recibida = Path(ruta)
 
@@ -26,9 +30,8 @@ def obtener_ruta_respaldo(ruta):
 
 
 def guardar_json(datos, ruta):
-    # Obtiene la ubicación completa del archivo.
+    # Guarda estructuras de Python en JSON con indentacion para que el respaldo sea legible y facil de revisar durante la entrega. Obtiene la ubicación completa del archivo.
     destino = obtener_ruta_respaldo(ruta)
-
     with open(destino, "w", encoding="utf-8") as archivo:
         json.dump(datos,archivo,ensure_ascii=False,indent=4) #escribe un archivo json en el archivo abierto prviamente en destino
 
@@ -36,6 +39,8 @@ def guardar_json(datos, ruta):
 
 
 def cargar_json(ruta, valor_por_defecto=None):
+    # Carga JSON de forma tolerante: si falta el archivo o esta roto, devuelve
+    # un valor seguro en vez de cerrar toda la aplicacion.
     # Obtiene la ubicación completa del archivo.
     origen = obtener_ruta_respaldo(ruta)
     # Devuelve el valor predeterminado si el archivo no existe.
@@ -53,6 +58,8 @@ def cargar_json(ruta, valor_por_defecto=None):
 
 
 def cargar_respaldo_pizzeria(pizzeria,ruta="respaldo_pizzeria.json"):
+    # Restaura el estado completo del negocio desde disco y valida que existan
+    # las secciones minimas antes de modificar el objeto Pizzeria.
     # Intenta leer el archivo de respaldo.
     datos = cargar_json(ruta, None)
 

@@ -1,14 +1,14 @@
 from datetime import datetime
 from pathlib import Path
-
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
-
 from src.utils.decoradores import medir_tiempo, registrar_log
 
 
 VENTAS_COLUMNAS = [
+    # Columnas internas: mantienen nombres estables para el codigo.
+    # Los encabezados visibles se traducen con VENTAS_ENCABEZADOS.
     "pedido_id",
     "fecha",
     "cliente",
@@ -37,6 +37,8 @@ VENTAS_ENCABEZADOS = {
 }
 
 STOCK_COLUMNAS = [
+    # Columnas internas del reporte de stock.
+    # La interfaz y Excel muestran nombres mas claros mediante STOCK_ENCABEZADOS.
     "ingrediente",
     "cantidad",
     "precio_unitario",
@@ -54,6 +56,7 @@ STOCK_ENCABEZADOS = {
 
 
 def _encabezado_visible(encabezado):
+    # Permite leer un Excel generado y devolver encabezados bonitos en la interfaz.
     encabezados = {}
     encabezados.update(VENTAS_ENCABEZADOS)
     encabezados.update(STOCK_ENCABEZADOS)
@@ -61,6 +64,7 @@ def _encabezado_visible(encabezado):
 
 
 def _nombre_ingrediente_visible(nombre):
+    # Corrige nombres tecnicos de ingredientes antes de mostrarlos en reportes.
     ingredientes = {
         "jamon": "jamón",
         "morron": "morrón",
@@ -73,6 +77,7 @@ def _nombre_ingrediente_visible(nombre):
 
 
 def obtener_carpeta_reportes():
+    # Ubicacion unica para reportes Excel. Se crea sola si el usuario borra la carpeta.
     ruta_proyecto = Path(__file__).resolve().parents[2]
     carpeta_reportes = ruta_proyecto / "reportes"
     carpeta_reportes.mkdir(parents=True, exist_ok=True)
@@ -80,11 +85,13 @@ def obtener_carpeta_reportes():
 
 
 def obtener_ruta_reporte(nombre_archivo):
+    # Arma la ruta final de un reporte manteniendo todos los Excel juntos.
     carpeta_reportes = obtener_carpeta_reportes()
     return carpeta_reportes / nombre_archivo
 
 
 def _convertir_entero(valor):
+    # Conversor defensivo: si un dato viejo o incompleto no sirve, devuelve None.
     try:
         return int(valor)
     except (TypeError, ValueError):
@@ -92,6 +99,7 @@ def _convertir_entero(valor):
 
 
 def _convertir_numero(valor):
+    # Normaliza importes y cantidades antes de agregarlos al reporte.
     try:
         return float(valor)
     except (TypeError, ValueError):
@@ -99,6 +107,7 @@ def _convertir_numero(valor):
 
 
 def _convertir_fecha(valor):
+    # Acepta fechas reales de Python o textos ISO guardados en JSON.
     if isinstance(valor, datetime):
         return valor
 
@@ -112,11 +121,14 @@ def _convertir_fecha(valor):
 
 
 def _formato_moneda(valor):
+    # Texto de dinero usado dentro de celdas descriptivas del reporte de ventas.
     texto = f"{valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
     return f"${texto}"
 
 
 def transformar_ventas(ventas):
+    # Limpia y normaliza las ventas antes de agruparlas.
+    # Tambien evita duplicados simples para que el reporte no infle totales.
     filas = []
     claves_vistas = set()
 
@@ -171,6 +183,8 @@ def transformar_ventas(ventas):
 
 
 def transformar_stock(stock):
+    # Acepta stock en dos formatos: lista detallada o diccionario simple.
+    # Devuelve siempre filas con valor total y estado visual.
     if isinstance(stock, list):
         filas_origen = stock
     else:
@@ -216,6 +230,8 @@ def transformar_stock(stock):
 
 
 def _agrupar_ventas_por_pedido(filas_ventas):
+    # Junta varias lineas de venta bajo un mismo pedido.
+    # Asi el Excel muestra una fila por pedido y no una fila suelta por producto.
     pedidos = {}
 
     for venta in filas_ventas:
@@ -244,6 +260,8 @@ def _agrupar_ventas_por_pedido(filas_ventas):
 
 
 def armar_reporte_ventas(ventas):
+    # Construye el contenido final de la hoja Ventas:
+    # productos resumidos, descuentos, total por pedido y total acumulado.
     filas_ventas = transformar_ventas(ventas)
 
     if not filas_ventas:
@@ -290,6 +308,8 @@ def armar_reporte_ventas(ventas):
 
 
 def _crear_libro(nombre_hoja, columnas, filas, encabezados):
+    # Crea un libro Excel desde filas ya preparadas y aplica nombres visibles.
+    # Si no hay datos, cambia a una hoja con mensaje de estado.
     libro = Workbook()
     hoja = libro.active
     hoja.title = nombre_hoja
@@ -309,6 +329,8 @@ def _crear_libro(nombre_hoja, columnas, filas, encabezados):
 
 
 def _aplicar_estilos(hoja, nombre_tabla):
+    # Estiliza el Excel para que parezca un reporte terminado:
+    # encabezado oscuro, filas ajustables, columnas con ancho automatico y tabla.
     encabezado_fill = PatternFill("solid", fgColor="111827")
     encabezado_font = Font(color="FFFFFF", bold=True)
 
@@ -349,6 +371,7 @@ def _aplicar_estilos(hoja, nombre_tabla):
 @registrar_log
 @medir_tiempo
 def generar_reporte_ventas(ventas, nombre_archivo="reporte_ventas.xlsx"):
+    # Entrada publica para exportar ventas. Los decoradores dejan registro y tiempo.
     filas_reporte = armar_reporte_ventas(ventas)
     destino = obtener_ruta_reporte(nombre_archivo)
     libro = _crear_libro("Ventas", VENTAS_COLUMNAS, filas_reporte, VENTAS_ENCABEZADOS)
@@ -359,6 +382,7 @@ def generar_reporte_ventas(ventas, nombre_archivo="reporte_ventas.xlsx"):
 @registrar_log
 @medir_tiempo
 def generar_reporte_stock(stock, nombre_archivo="reporte_stock.xlsx"):
+    # Entrada publica para exportar stock con cantidades, precios y estado.
     filas_reporte = transformar_stock(stock)
     destino = obtener_ruta_reporte(nombre_archivo)
     libro = _crear_libro("Stock", STOCK_COLUMNAS, filas_reporte, STOCK_ENCABEZADOS)
@@ -367,6 +391,7 @@ def generar_reporte_stock(stock, nombre_archivo="reporte_stock.xlsx"):
 
 
 def leer_reporte_excel(nombre_archivo):
+    # Lee un Excel ya generado para mostrarlo dentro de Tkinter sin usar DataFrames.
     ruta_reporte = obtener_ruta_reporte(nombre_archivo)
 
     if not ruta_reporte.exists():
@@ -395,5 +420,4 @@ def leer_reporte_excel(nombre_archivo):
             fila[encabezado] = valor
 
         resultado.append(fila)
-
     return resultado

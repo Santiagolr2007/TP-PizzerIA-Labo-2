@@ -6,6 +6,8 @@ from src.utils.validaciones import validar_entero_positivo
 class Inventario:
 
     def __init__(self, stock_inicial=None, precios_stock=None):
+        # El inventario maneja dos diccionarios paralelos:
+        # cantidades disponibles y precio unitario de compra por ingrediente.
         # Crea el stock inicial.
         if stock_inicial is None:
             self.__stock = {}
@@ -41,6 +43,8 @@ class Inventario:
 #########
 
     def reponer(self, ingrediente, cantidad):
+        # Reponer no calcula dinero: solo modifica cantidades.
+        # El costo se calcula desde Pizzeria antes de llamar a este metodo.
         # Valida que la cantidad sea un número entero mayor que cero.
         cantidad_validada = validar_entero_positivo(cantidad, "cantidad")
 
@@ -56,6 +60,8 @@ class Inventario:
 ##########
 
     def obtener_stock_detallado(self):
+        # Esta version se usa para tablas y reportes porque incluye datos calculados,
+        # no solo la cantidad cruda del ingrediente.
         # Devuelve el stock con cantidad, precio unitario y valor total.
         with self.__candado:
             stock_detallado = []
@@ -94,6 +100,8 @@ class Inventario:
 ########
 
     def calcular_costo_reposicion(self, ingrediente, cantidad):
+        # Separa el calculo del costo de la accion de reponer.
+        # Asi la interfaz puede mostrar un costo estimado antes de confirmar.
         # Calcula cuánto cuesta comprar cierta cantidad de un ingrediente.
         cantidad_validada = validar_entero_positivo(cantidad,"cantidad")
         precio_unitario = self.obtener_precio_unitario(ingrediente)
@@ -103,6 +111,8 @@ class Inventario:
 ########
 
     def descontar(self, ingredientes_necesarios):
+        # Descontar es una operacion atomica: primero verifica todo el pedido
+        # y recien despues descuenta. Si falta algo, no descuenta parcialmente.
         with self.__candado:
             faltantes = {}
             # Primero revisa si hay stock suficiente para todos los ingredientes.

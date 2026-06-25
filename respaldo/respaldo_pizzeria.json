@@ -1,5 +1,5 @@
 {
-    "dinero": 51120.439999999995,
+    "dinero": 163579.84,
     "catalogo": [
         {
             "nombre": "Pizza muzzarella",
@@ -99,9 +99,9 @@
         }
     ],
     "stock": {
-        "harina": 61,
-        "salsa": 37,
-        "mozzarella": 42,
+        "harina": 41,
+        "salsa": 17,
+        "mozzarella": 2,
         "jamon": 57,
         "morron": 57,
         "cebolla": 38,
@@ -109,12 +109,12 @@
         "ajo": 37,
         "roquefort": 31,
         "aceitunas": 56,
-        "tapas_empanada": 51,
+        "tapas_empanada": 67,
         "carne": 49,
         "jamon_queso": 49,
         "pollo": 32,
-        "verdura": 43,
-        "humita": 50,
+        "verdura": 37,
+        "humita": 32,
         "gaseosa": 66,
         "agua": 32
     },
@@ -170,6 +170,71 @@
             "subtotal_bruto": 5066.0,
             "descuento": 759.9,
             "subtotal": 4306.1
+        },
+        {
+            "pedido_id": 2,
+            "fecha": "2026-06-24T23:52:58.194096",
+            "cliente": "Rocio",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de humita",
+            "cantidad": 6,
+            "precio_unitario": 1117.0,
+            "subtotal_bruto": 6702.0,
+            "descuento": 670.2,
+            "subtotal": 6031.8
+        },
+        {
+            "pedido_id": 4,
+            "fecha": "2026-06-24T23:56:40.357407",
+            "cliente": "Pedro",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de humita",
+            "cantidad": 6,
+            "precio_unitario": 1117.0,
+            "subtotal_bruto": 6702.0,
+            "descuento": 1005.3,
+            "subtotal": 5696.7
+        },
+        {
+            "pedido_id": 4,
+            "fecha": "2026-06-24T23:56:40.357407",
+            "cliente": "Pedro",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de verdura",
+            "cantidad": 6,
+            "precio_unitario": 1117.0,
+            "subtotal_bruto": 6702.0,
+            "descuento": 1005.3,
+            "subtotal": 5696.7
+        },
+        {
+            "pedido_id": 5,
+            "fecha": "2026-06-24T23:56:56.022282",
+            "cliente": "Juan",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Empanada de humita",
+            "cantidad": 6,
+            "precio_unitario": 1117.0,
+            "subtotal_bruto": 6702.0,
+            "descuento": 670.2,
+            "subtotal": 6031.8
+        },
+        {
+            "pedido_id": 8,
+            "fecha": "2026-06-24T23:59:54.033426",
+            "cliente": "f",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "producto": "Pizza muzzarella",
+            "cantidad": 10,
+            "precio_unitario": 11473.0,
+            "subtotal_bruto": 114730.0,
+            "descuento": 13767.6,
+            "subtotal": 100962.4
         }
     ],
     "pedidos": [
@@ -206,6 +271,154 @@
                 {
                     "nombre": "Gaseosa",
                     "cantidad": 2
+                }
+            ]
+        },
+        {
+            "pedido_id": 2,
+            "cliente": "Rocio",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T23:52:58.194096",
+            "subtotal": 6702.0,
+            "descuento": 670.2,
+            "total": 6031.8,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Empanadas",
+            "tiempo_estimado": 12,
+            "tiempo_restante": 0,
+            "inicio_preparacion": "2026-06-24T23:53:07.049434",
+            "fin_preparacion": "2026-06-24T23:53:08.495549",
+            "motivo_cancelacion": "",
+            "productos": [
+                {
+                    "nombre": "Empanada de humita",
+                    "cantidad": 6
+                }
+            ]
+        },
+        {
+            "pedido_id": 4,
+            "cliente": "Pedro",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T23:56:40.357407",
+            "subtotal": 13404.0,
+            "descuento": 2010.6,
+            "total": 11393.4,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Empanadas",
+            "tiempo_estimado": 24,
+            "tiempo_restante": 0,
+            "inicio_preparacion": "2026-06-24T23:57:00.637303",
+            "fin_preparacion": "2026-06-24T23:57:03.529313",
+            "motivo_cancelacion": "",
+            "productos": [
+                {
+                    "nombre": "Empanada de humita",
+                    "cantidad": 6
+                },
+                {
+                    "nombre": "Empanada de verdura",
+                    "cantidad": 6
+                }
+            ]
+        },
+        {
+            "pedido_id": 5,
+            "cliente": "Juan",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T23:56:56.022282",
+            "subtotal": 6702.0,
+            "descuento": 670.2,
+            "total": 6031.8,
+            "cocinero_asignado": "Cocinero 2",
+            "estacion_cocina": "Empanadas",
+            "tiempo_estimado": 12,
+            "tiempo_restante": 0,
+            "inicio_preparacion": "2026-06-24T23:57:00.637379",
+            "fin_preparacion": "2026-06-24T23:57:02.083160",
+            "motivo_cancelacion": "",
+            "productos": [
+                {
+                    "nombre": "Empanada de humita",
+                    "cantidad": 6
+                }
+            ]
+        },
+        {
+            "pedido_id": 6,
+            "cliente": "yo",
+            "estado": "cancelado",
+            "tipo_entrega": "Delivery",
+            "direccion": "s12123",
+            "fecha": "2026-06-24T23:58:41.866286",
+            "subtotal": 344190.0,
+            "descuento": 41302.799999999996,
+            "total": 302887.2,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Horno",
+            "tiempo_estimado": 45,
+            "tiempo_restante": 45,
+            "inicio_preparacion": "2026-06-24T23:58:46.977900",
+            "fin_preparacion": "",
+            "motivo_cancelacion": "Stock insuficiente: salsa: se necesitan 60;mozzarella: se necesitan 120;",
+            "productos": [
+                {
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 30
+                }
+            ]
+        },
+        {
+            "pedido_id": 7,
+            "cliente": "s",
+            "estado": "cancelado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T23:59:35.028668",
+            "subtotal": 229460.0,
+            "descuento": 27535.2,
+            "total": 201924.8,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Horno",
+            "tiempo_estimado": 45,
+            "tiempo_restante": 45,
+            "inicio_preparacion": "2026-06-24T23:59:39.318880",
+            "fin_preparacion": "",
+            "motivo_cancelacion": "Stock insuficiente: salsa: se necesitan 40;mozzarella: se necesitan 80;",
+            "productos": [
+                {
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 20
+                }
+            ]
+        },
+        {
+            "pedido_id": 8,
+            "cliente": "f",
+            "estado": "entregado",
+            "tipo_entrega": "Retiro",
+            "direccion": "",
+            "fecha": "2026-06-24T23:59:54.033426",
+            "subtotal": 114730.0,
+            "descuento": 13767.6,
+            "total": 100962.4,
+            "cocinero_asignado": "Cocinero 1",
+            "estacion_cocina": "Horno",
+            "tiempo_estimado": 45,
+            "tiempo_restante": 0,
+            "inicio_preparacion": "2026-06-25T00:00:00.268339",
+            "fin_preparacion": "2026-06-25T00:00:05.676484",
+            "motivo_cancelacion": "",
+            "productos": [
+                {
+                    "nombre": "Pizza muzzarella",
+                    "cantidad": 10
                 }
             ]
         }

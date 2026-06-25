@@ -6,6 +6,8 @@ from src.utils.validaciones import validar_precio, validar_texto
 class Producto(ABC):
 
     def __init__(self, nombre, precio_base):
+        # Todas las subclases comparten nombre y precio base.
+        # Cada subclase define despues como calcula su precio final.
         # Validamos que el nombre no esté vacío.
         self.nombre = validar_texto(nombre, "nombre")
         # El precio debe consultarse mediante la propiedad precio_base. y _precio_base es un atributo protegido.
@@ -31,6 +33,8 @@ class Producto(ABC):
 class Pizza(Producto):
 
     def __init__(self, nombre, precio_base, tamanio, ingredientes_extra=None):
+        # Pizza agrega dos datos propios: tamanio e ingredientes extra.
+        # ingredientes_extra permite crear variedades sin crear una clase por cada pizza.
         # Llama al constructor de Producto para guardar y validar el nombre y el precio base.
         super().__init__(nombre, precio_base) #Repite las validaciones de nombre y precio base de la clase producto.
         # Validamos el tamaño y lo convertimos a minúsculas.
@@ -44,6 +48,8 @@ class Pizza(Producto):
 
 
     def calcular_precio(self):
+        # El precio de la pizza depende del tamanio.
+        # Se conserva el precio base para chica, y se aumenta en tamanios mayores.
         #Calcula el precio final según el tamaño de la pizza.
         if self.tamanio == "chica":
             factor_aumento = 1.0
@@ -62,6 +68,8 @@ class Pizza(Producto):
 
 
     def ingredientes_necesarios(self, cantidad=1):
+        # Devuelve ingredientes para cocina/stock, no para mostrar al usuario.
+        # Por eso se usan claves internas como "harina" o "mozzarella".
         #Devuelve un diccionario con los ingredientes necesarios para preparar la cantidad solicitada de pizzas.
         # Una pizza grande utiliza el doble de ingredientes.
         if self.tamanio == "grande":
@@ -88,6 +96,7 @@ class Pizza(Producto):
 class Empanada(Producto):
 
     def __init__(self, nombre, precio_base, ingrediente_relleno):
+        # Cada empanada consume una tapa y una unidad del relleno elegido.
         # Llama al constructor de Producto para guardar y validar el nombre y el precio base.
         super().__init__(nombre, precio_base)
         # Guarda el ingrediente principal del relleno.
@@ -109,6 +118,8 @@ class Empanada(Producto):
 class Bebida(Producto):
 
     def __init__(self, nombre, precio_base, ingrediente_stock=None):
+        # Las bebidas no se preparan en cocina, pero pueden asociarse
+        # a un ingrediente para controlar stock.
         # Llama al constructor de Producto para guardar y validar el nombre y el precio base.
         super().__init__(nombre, precio_base)
         # Se guarda el dato por si se quiere controlar stock de bebidas más adelante.

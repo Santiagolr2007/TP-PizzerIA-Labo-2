@@ -1,6 +1,4 @@
-# Arma los datos que consumen las tablas y gráficos de Tkinter.
-# Las claves internas son estables para el código; los encabezados visibles se definen en menu_grafico.py.
-
+# Arma los datos que consumen las tablas y gráficos de Tkinter. Las claves internas son estables para el código; los encabezados visibles se definen en menu_grafico.py.
 from src.modelos.producto import Bebida, Empanada, Pizza
 from src.servicios.cocina_threads import calcular_tiempo_estimado, determinar_estaciones_pedido
 from src.interfaz.formateadores import (
@@ -14,6 +12,7 @@ from src.interfaz.formateadores import (
 
 
 def resumen_estados(pizzeria):
+    # Cuenta pedidos por estado para alimentar tarjetas y graficos del panel.
     resumen = {
         "pendiente": 0,
         "en preparacion": 0,
@@ -29,6 +28,8 @@ def resumen_estados(pizzeria):
 
 
 def detalle_producto(producto):
+    # Genera una descripcion visible segun el tipo de producto.
+    # Evita mostrar atributos internos como ingrediente_relleno o ingredientes_extra.
     if isinstance(producto, Pizza):
         extras = []
         for ingrediente, cantidad in producto.ingredientes_extra.items():
@@ -49,6 +50,8 @@ def detalle_producto(producto):
 
 
 def filas_catalogo(pizzeria, filtro=""):
+    # Transforma el catalogo en filas listas para Treeview.
+    # El filtro busca por nombre, categoria y detalle visible.
     filtro = filtro.lower().strip()
     filas = []
     for numero, producto in enumerate(pizzeria.obtener_catalogo(), start=1):
@@ -67,6 +70,8 @@ def filas_catalogo(pizzeria, filtro=""):
 
 
 def filas_pedidos(pizzeria):
+    # Convierte pedidos completos en filas de tabla con textos ya formateados.
+    # La interfaz no calcula totales ni descuentos directamente.
     filas = []
     for pedido in pizzeria.obtener_pedidos():
         filas.append(
@@ -85,6 +90,8 @@ def filas_pedidos(pizzeria):
 
 
 def tiempo_pedido_visible(pedido):
+    # Muestra el tiempo de cocina sin refrescar la tabla a cada minuto.
+    # Si el pedido aun no entro a cocina, informa una estimacion.
     if pedido.estado == "en preparacion":
         return f"{pedido.tiempo_restante or pedido.tiempo_estimado} min"
 
@@ -124,6 +131,7 @@ def filas_cocina(pizzeria):
 
 
 def filas_estaciones(pizzeria):
+    # Resume la carga de trabajo por estacion para ver rapidamente donde hay demora.
     resumen = {}
 
     for pedido in pizzeria.obtener_pedidos():
@@ -145,6 +153,8 @@ def filas_estaciones(pizzeria):
 
 
 def filas_eventos_cocina(cocina_eventos):
+    # Muestra los ultimos eventos de cocina en orden reciente.
+    # Se limita a 10 para que la tabla principal no crezca sin control.
     filas = []
     for evento in cocina_eventos[:10]:
         filas.append(
@@ -161,6 +171,7 @@ def filas_eventos_cocina(cocina_eventos):
 
 
 def filas_stock(pizzeria):
+    # Prepara stock con importes y estado visual para que la tabla sea clara.
     filas = []
     for fila in pizzeria.inventario.obtener_stock_detallado():
         cantidad = fila["cantidad"]
@@ -178,6 +189,7 @@ def filas_stock(pizzeria):
 
 
 def stock_bajo(pizzeria):
+    # Cuenta ingredientes que conviene reponer. Se usa en metricas del panel.
     cantidad = 0
     for fila in pizzeria.inventario.obtener_stock_detallado():
         if fila["cantidad"] <= 5:
@@ -186,6 +198,7 @@ def stock_bajo(pizzeria):
 
 
 def datos_grafico_estados(pizzeria):
+    # Datos compactos para el grafico de estados de pedidos.
     estados = resumen_estados(pizzeria)
     return [
         ("Pend.", estados["pendiente"]),
@@ -198,6 +211,7 @@ def datos_grafico_estados(pizzeria):
 
 
 def datos_grafico_productos(pizzeria):
+    # Calcula productos con mayor facturacion registrada para el grafico de ventas.
     ventas_por_producto = {}
     for venta in pizzeria.obtener_ventas():
         producto = str(venta.get("producto", "")).strip()
@@ -210,6 +224,7 @@ def datos_grafico_productos(pizzeria):
 
 
 def datos_grafico_stock_bajo(pizzeria):
+    # Ordena ingredientes por cantidad ascendente para destacar faltantes.
     filas = []
     for item in pizzeria.inventario.obtener_stock_detallado():
         filas.append((capitalizar_visible(item["ingrediente"]), float(item["cantidad"])))
@@ -217,8 +232,30 @@ def datos_grafico_stock_bajo(pizzeria):
     return filas[:6]
 
 
+def _nombre_promocion_corto(nombre):
+    # Acorta nombres largos para que entren mejor debajo de las barras del grafico.
+    nombres = {
+        "Combo pizza + 2 empanadas + 2 bebidas": "Combo completo",
+        "Combo pizza + media docena": "Pizza + 6 emp.",
+        "Promo 3 pizzas": "3 pizzas",
+        "Promo docena de empanadas": "Docena emp.",
+        "Promo 2 pizzas": "2 pizzas",
+        "Promo media docena de empanadas": "Media docena",
+    }
+    return nombres.get(nombre, nombre)
+
+
 def datos_grafico_descuentos(pizzeria):
-    total_descuento = 0
-    for venta in pizzeria.obtener_ventas():
-        total_descuento += float(venta.get("descuento", 0) or 0)
-    return [("Promos", total_descuento)] if total_descuento else []
+    # Cuenta cuantas veces aparece cada promocion en pedidos no cancelados.
+    # El grafico muestra uso de promociones, no dinero ahorrado.
+    usos_promociones = {}
+    for pedido in pizzeria.obtener_pedidos():
+        if pedido.estado == "cancelado":
+            continue
+
+        for promocion in pedido.obtener_promociones():
+            nombre = _nombre_promocion_corto(promocion["nombre"])
+            usos_promociones[nombre] = usos_promociones.get(nombre, 0) + 1
+
+    datos = sorted(usos_promociones.items(), key=lambda item: item[1], reverse=True)
+    return datos[:6]

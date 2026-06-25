@@ -8,6 +8,8 @@ _DOLAR_REFERENCIA = None
 
 
 def obtener_dolar_referencia():
+    # El precio del dolar se consulta una vez y queda cacheado en memoria.
+    # Si la API no responde, se usa _DOLAR_RESPALDO para que el sistema arranque igual.
     global _DOLAR_REFERENCIA
 
     if _DOLAR_REFERENCIA is not None:
@@ -26,6 +28,8 @@ def obtener_dolar_referencia():
 
 
 def convertir_dolares_a_pesos(precio_dolares):
+    # Los precios base se declaran en dolares para que el catalogo sea facil de ajustar.
+    # En ejecucion se convierten a pesos con la cotizacion consultada o de respaldo.
     # Convierte un precio estimado en dólares a pesos argentinos.
     constante_dolar = obtener_dolar_referencia()
     precio_pesos = precio_dolares * constante_dolar
@@ -33,6 +37,8 @@ def convertir_dolares_a_pesos(precio_dolares):
 
 
 def crear_stock_aleatorio(ingredientes):
+    # Genera un inventario inicial variable para simular un negocio real.
+    # Luego el administrador puede reponer manualmente desde la interfaz.
     # Crea un stock aleatorio entre 40 y 100 para cada ingrediente.
     stock = {}
     for ingrediente in ingredientes:
@@ -42,6 +48,8 @@ def crear_stock_aleatorio(ingredientes):
 
 
 def crear_sistema():
+    # Punto de armado del sistema completo: inventario, caja inicial y catalogo.
+    # La interfaz llama a esta funcion al iniciar para tener datos listos de prueba.
     # Lista de ingredientes que maneja el inventario.
     ingredientes = [
         "harina",
@@ -66,6 +74,9 @@ def crear_sistema():
 
     # Crea cantidades aleatorias entre 15 y 40 para todos los ingredientes.
     stock_inicial = crear_stock_aleatorio(ingredientes)
+
+    # Cada ingrediente tiene un costo unitario propio. Estos valores se usan para
+    # calcular el valor del stock y el costo de reposicion.
 
     # Precio unitario estimado de cada ingrediente convertido desde dólares.
     precios_stock = {
@@ -92,11 +103,16 @@ def crear_sistema():
     # Crea el inventario con cantidades y precios.
     inventario = Inventario(stock_inicial,precios_stock)
 
+    # Se arranca con una caja aleatoria para que el panel no quede vacio
+    # y se puedan probar ventas, reportes y respaldos desde el primer uso.
+
     # Crea la pizzería.
     dinero_inicial = random.randint(5000,20000)
     pizzeria = Pizzeria(inventario,dinero_inicial)
 
 
+    # Catalogo inicial de pizzas. Cada producto conoce sus ingredientes extra,
+    # por eso despues el pedido puede descontar stock sin tener reglas duplicadas.
     # Registra pizzas. llamando el metodo registrar_producto y pasandole nombre precio y tamaño y diccionario con ingredientes:cantidad
     pizzeria.registrar_producto(
         Pizza(
@@ -163,6 +179,8 @@ def crear_sistema():
         )
     )
 
+    # Catalogo inicial de empanadas. Cada relleno se conecta con un ingrediente
+    # del inventario para que la cocina consuma stock al procesar pedidos.
     # Registra empanadas.
     pizzeria.registrar_producto(
         Empanada(
@@ -204,6 +222,8 @@ def crear_sistema():
         )
     )
 
+    # Catalogo inicial de bebidas. Son productos simples pero tambien pueden
+    # descontar stock mediante ingrediente_stock.
     # Registra bebidas.
     pizzeria.registrar_producto(
         Bebida(
